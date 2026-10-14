@@ -53,8 +53,10 @@ autostart_enabled() {
 }
 
 settings_json() { # <id>
+  local auto=false
+  autostart_enabled "$1" && auto=true
   jq -nc --arg size "$(setting_value "$1" cache-size)" --arg age "$(setting_value "$1" cache-age)" \
-    --argjson ro "$(setting_value "$1" read-only)" --argjson auto "$(autostart_enabled "$1" && echo true || echo false)" \
+    --argjson ro "$(setting_value "$1" read-only)" --argjson auto "$auto" \
     '{cacheSize: $size, cacheAge: $age, readOnly: $ro, autostart: $auto}'
 }
 

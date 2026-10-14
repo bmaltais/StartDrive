@@ -6,7 +6,10 @@ have_rclone() { command -v rclone >/dev/null; }
 have_secret() { secret-tool lookup "${SECRET_ATTRS[@]}" >/dev/null 2>&1; }
 config_encrypted() { have_rclone && [[ -f $RCLONE_CONFIG ]] && rclone config encryption check >/dev/null 2>&1; }
 
-list_remotes() { have_rclone && { rclone listremotes 2>/dev/null | sed 's/:$//'; } || true; }
+list_remotes() {
+  have_rclone || return 0
+  rclone listremotes 2>/dev/null | sed 's/:$//' || true
+}
 is_configured() { list_remotes | grep -qx "$(remote_of "$1")"; }
 
 ensure_rclone() {
