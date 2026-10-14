@@ -191,7 +191,7 @@ Panel {
     content: PanelKeyCatcher {
       id: keys
       property alias flick: flick
-      implicitHeight: column.implicitHeight
+      implicitHeight: top.height + Style.space(10) + column.implicitHeight
       anchors.fill: parent
 
       onMoveRequested: function (dx, dy) {
@@ -214,30 +214,12 @@ Panel {
         else if (key === "d" && d.configured) root.toggleDetails(d.id)
       }
 
-      ScrollTrack {
-        id: scrollTrack
-        flick: flick
-        foreground: root.foreground
-        anchors.top: parent.top
-        anchors.bottom: parent.bottom
-        anchors.right: parent.right
-      }
-
-      Flickable {
-        id: flick
-        anchors.fill: parent
-        anchors.rightMargin: scrollTrack.gutter + scrollTrack.width
-        contentWidth: width
-        contentHeight: column.implicitHeight
-        clip: true
-        boundsBehavior: Flickable.StopAtBounds
-        flickableDirection: Flickable.VerticalFlick
-        interactive: contentHeight > height
-
-        Column {
-          id: column
-          width: flick.width
-          spacing: Style.space(12)
+      // The title, the all-drives switch and the section header stay put; only
+      // the drives scroll beneath them.
+      Column {
+        id: top
+        width: parent.width
+        spacing: Style.space(12)
 
           // ---------- Hero ----------
           PanelHero {
@@ -293,11 +275,6 @@ Panel {
 
           PanelSeparator { foreground: root.foreground }
 
-          // ---------- Drives ----------
-          Column {
-            width: parent.width
-            spacing: Style.space(10)
-
             Item {
               width: parent.width
               implicitHeight: header.implicitHeight
@@ -336,6 +313,36 @@ Panel {
                 }
               }
             }
+      }
+
+      ScrollTrack {
+        id: scrollTrack
+        flick: flick
+        foreground: root.foreground
+        anchors.top: flick.top
+        anchors.bottom: flick.bottom
+        anchors.right: parent.right
+      }
+
+      Flickable {
+        id: flick
+        anchors.top: top.bottom
+        anchors.topMargin: Style.space(10)
+        anchors.bottom: parent.bottom
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.rightMargin: scrollTrack.gutter + scrollTrack.width
+        contentWidth: width
+        contentHeight: column.implicitHeight
+        clip: true
+        boundsBehavior: Flickable.StopAtBounds
+        flickableDirection: Flickable.VerticalFlick
+        interactive: contentHeight > height
+
+        Column {
+          id: column
+          width: flick.width
+          spacing: Style.space(12)
 
             Column {
               id: driveColumn
@@ -352,7 +359,6 @@ Panel {
                 }
               }
             }
-          }
 
           Text {
             textFormat: Text.PlainText
