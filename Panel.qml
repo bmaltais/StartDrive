@@ -3,7 +3,6 @@
 // look of one drive. This file wires them to the bar, the keyboard and IPC.
 
 import QtQuick
-import QtQuick.Controls
 import Quickshell
 import Quickshell.Io
 import qs.Commons
@@ -215,16 +214,25 @@ Panel {
         else if (key === "d" && d.configured) root.toggleDetails(d.id)
       }
 
+      ScrollTrack {
+        id: scrollTrack
+        flick: flick
+        foreground: root.foreground
+        anchors.top: parent.top
+        anchors.bottom: parent.bottom
+        anchors.right: parent.right
+      }
+
       Flickable {
         id: flick
         anchors.fill: parent
+        anchors.rightMargin: scrollTrack.gutter + scrollTrack.width
         contentWidth: width
         contentHeight: column.implicitHeight
         clip: true
         boundsBehavior: Flickable.StopAtBounds
         flickableDirection: Flickable.VerticalFlick
         interactive: contentHeight > height
-        ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
 
         Column {
           id: column

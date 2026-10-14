@@ -6,7 +6,7 @@ StartDrive is an Omarchy shell plugin. Omarchy runs plugins unsandboxed, with yo
 
 | Component | What it is | Privilege |
 |---|---|---|
-| `Panel.qml`, `DriveService.qml`, `DriveRow.qml`, `Segmented.qml`, `DriveModel.js` | The bar widget, in the shell process | Your user. Runs `bin/startdrive` and `xdg-open` with argument arrays, never a shell string. |
+| `Panel.qml`, `DriveService.qml`, `DriveRow.qml`, `Segmented.qml`, `ScrollTrack.qml`, `DriveModel.js` | The bar widget, in the shell process | Your user. Runs `bin/startdrive` and `xdg-open` with argument arrays, never a shell string. |
 | `bin/startdrive`, `lib/*.sh` | The command line the panel calls | Your user |
 | `systemd/startdrive@.service` | A systemd **user** unit per drive, running `rclone mount` | Your user |
 | `rclone`, `fuse3` | Installed on the first Connect with `omarchy pkg add` | **sudo**, once, through Omarchy's package helper. This is the only privileged step. |

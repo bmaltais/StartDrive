@@ -7,7 +7,7 @@
 | `manifest.json` | The Omarchy plugin manifest (a `bar-widget`) |
 | `Panel.qml` | The bar widget: wiring, keyboard cursor, IPC |
 | `DriveService.qml` | Data and every call to the CLI |
-| `DriveRow.qml`, `Segmented.qml` | The look of one drive and its details |
+| `DriveRow.qml`, `Segmented.qml`, `ScrollTrack.qml` | The look of one drive, its choices and the scroll bar |
 | `DriveModel.js` | The rules (status text, totals, cursor stops). No Quickshell imports, so Node tests it |
 | `bin/startdrive`, `lib/*.sh` | The command line: state, mounts, sign-in, cache, settings |
 | `systemd/startdrive@.service` | The mount unit |
