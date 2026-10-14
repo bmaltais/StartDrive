@@ -70,8 +70,8 @@ cmd_about() {
     echo '{}'
 }
 
-window_for() { # <title>: the address of a mapped window with that title
-  hyprctl clients -j | jq -r --arg t "$1" '[.[] | select(.title == $t and .mapped)] | .[0].address // empty'
+window_addresses() { # the address of every mapped window, one per line
+  hyprctl clients -j 2>/dev/null | jq -r '.[] | select(.mapped) | .address'
 }
 
 focus_window() { # <address>
@@ -79,23 +79,35 @@ focus_window() { # <address>
     hyprctl dispatch focuswindow "address:$1" >/dev/null 2>&1 || true
 }
 
-# Open the folder, reusing a file-manager window already showing it, and focus
-# the result (it may land on another monitor's workspace).
+# Open the folder in the file manager and focus the result (it may land on
+# another monitor's workspace). A file manager's title says nothing about the
+# folder, so the window we opened is remembered by its address and focused
+# again next time instead of opening a second one.
 cmd_open() {
-  local id="$1" remote dir addr="" i
-  remote="$(remote_of "$id")"
+  local id="$1" dir marker addr="" known before after i
   dir="$(mount_path "$id")"
+  marker="$RUN_DIR/open-$(remote_of "$id")"
   is_mounted "$id" || cmd_mount "$id"
-  addr="$(window_for "$remote")"
-  if [[ -z $addr ]]; then
-    setsid uwsm-app -- xdg-open "$dir" >/dev/null 2>&1 &
-    for ((i = 0; i < 50; i++)); do
-      addr="$(window_for "$remote")"
-      [[ -n $addr ]] && break
-      sleep 0.1
-    done
+
+  known="$(cat "$marker" 2>/dev/null || true)"
+  if [[ -n $known ]] && window_addresses | grep -qx "$known"; then
+    focus_window "$known"
+    return 0
   fi
-  [[ -n $addr ]] && focus_window "$addr"
+
+  before="$(window_addresses)"
+  setsid uwsm-app -- xdg-open "$dir" >/dev/null 2>&1 &
+  for ((i = 0; i < 50; i++)); do
+    after="$(window_addresses)"
+    addr="$(comm -13 <(sort <<<"$before") <(sort <<<"$after") | head -n1)"
+    [[ -n $addr ]] && break
+    sleep 0.1
+  done
+  if [[ -n $addr ]]; then
+    private_dir "$RUN_DIR"
+    printf '%s\n' "$addr" >"$marker"
+    focus_window "$addr"
+  fi
   return 0
 }
 
