@@ -419,7 +419,7 @@ Column {
     DetailLine {
       itemKey: "clearCache"
       label: "Clear cache"
-      hint: card.pendingFiles > 0 ? "Wait for uploads to finish" : (Model.formatBytes(card.activity ? card.activity.cacheBytes : card.drive.cacheBytes) || "0 B") + " on disk"
+      hint: card.pendingFiles > 0 ? "Wait for uploads to finish" : (Model.formatBytes(card.drive.cacheBytes) || "0 B") + " on disk"
       Button {
         text: "Clear"
         iconText: "󰩹"

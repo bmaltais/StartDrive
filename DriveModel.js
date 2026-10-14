@@ -72,7 +72,6 @@ function driveStatus(drive, activity, working) {
   if (!drive.mounted) return { kind: "off", text: "Connected · not mounted" }
   if (activity) {
     if (activity.errored > 0) return { kind: "failed", text: plural(activity.errored, "file", "files") + " failed to upload" }
-    if (activity.outOfSpace) return { kind: "failed", text: "Cache is full" }
     var n = pending(activity)
     if (n > 0) {
       var speed = formatSpeed(activity.speed)

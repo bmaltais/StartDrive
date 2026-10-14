@@ -28,13 +28,14 @@ RuntimeDirectoryMode=0700
 ExecStartPre=/usr/bin/mkdir -p -m 0700 %h/Cloud/%i %h/.cache/rclone
 ExecStart=/usr/bin/rclone mount %i: %h/Cloud/%i \
   --vfs-cache-mode full \
-  --dir-cache-time 30s \
+  --dir-cache-time 5m \
   --poll-interval 15s \
   --umask 077 \
   --allow-other=false \
   --rc --rc-addr=unix://%t/startdrive/%i/rc.sock --rc-no-auth \
   --log-level NOTICE
 ExecStop=/usr/bin/fusermount3 -uz %h/Cloud/%i
+TimeoutStopSec=20
 Restart=on-failure
 RestartSec=10
 UMask=0077

@@ -1,7 +1,12 @@
 # shellcheck shell=bash
 # Drive state and the everyday actions: mount, unmount, open, usage.
 
-is_mounted() { mountpoint -q "$(mount_path "$1")" 2>/dev/null; }
+# Read from the kernel's mount table, never by touching the path: a stat of a
+# wedged FUSE mount blocks for good, and this runs on every panel refresh.
+is_mounted() {
+  local path; path="$(mount_path "$1")"
+  awk -v p="$path" '$5 == p { found = 1 } END { exit !found }' /proc/self/mountinfo
+}
 
 # unit_property <unit> <property>: one value from `systemctl show`.
 unit_property() {
