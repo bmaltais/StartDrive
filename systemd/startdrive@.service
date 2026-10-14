@@ -1,6 +1,6 @@
 [Unit]
 Description=StartDrive mount (%i)
-Documentation=https://github.com/bmaltais/omarchy-cloud-drives
+Documentation=https://github.com/bmaltais/StartDrive
 After=network-online.target graphical-session.target
 Wants=network-online.target
 # The config password lives in the login keyring; without a session bus it

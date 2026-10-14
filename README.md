@@ -22,7 +22,7 @@
 ## Install
 
 ```sh
-omarchy plugin add https://github.com/bmaltais/omarchy-cloud-drives --enable
+omarchy plugin add https://github.com/bmaltais/StartDrive --enable
 ```
 
 It adds a cloud icon to the bar. The first time you connect a drive, `rclone` and `fuse3` are installed with `omarchy pkg add` (one sudo prompt, the only privileged step). Everything else (`secret-tool`, `gum`, `jq`, `curl`) ships with Omarchy.
