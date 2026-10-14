@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "id": "edbron.cloud-drives",
+  "name": "Cloud Drives",
+  "version": "0.1.0",
+  "author": "edbron",
+  "license": "MIT",
+  "description": "Connect iCloud Drive, Google Drive and OneDrive as folders under ~/Cloud, with credentials kept in the system keyring.",
+  "kinds": [
+    "bar-widget"
+  ],
+  "activation": "on-demand",
+  "entryPoints": {
+    "barWidget": "Panel.qml"
+  },
+  "barWidget": {
+    "displayName": "Cloud Drives",
+    "description": "Mount and manage iCloud Drive, Google Drive and OneDrive.",
+    "category": "System",
+    "aliases": [
+      "cloud",
+      "icloud",
+      "google-drive",
+      "onedrive",
+      "rclone"
+    ],
+    "allowMultiple": false,
+    "defaultSection": "right",
+    "defaults": {},
+    "schema": []
+  },
+  "homepage": "https://github.com/edbron/omarchy-cloud-drives"
+}
