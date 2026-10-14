@@ -1,278 +1,180 @@
+// StartDrive: the bar widget and its panel. DriveService.qml owns the data and
+// every call to bin/startdrive, DriveModel.js the rules, DriveRow.qml the
+// look of one drive. This file wires them to the bar, the keyboard and IPC.
+
 import QtQuick
 import QtQuick.Controls
 import Quickshell
 import Quickshell.Io
-import qs.Ui
 import qs.Commons
+import qs.Ui
+import "DriveModel.js" as Model
 
-// Bar widget + popup for Cloud Drives: one row per provider (Google Drive,
-// OneDrive, iCloud Drive) with connect / mount / open / disconnect actions.
-// All the work happens in bin/omarchy-cloud-drives; interactive steps
-// (sign-in, 2FA, confirmations) run in a floating terminal.
 Panel {
   id: root
-  moduleName: "edbron.cloud-drives"
-  ipcTarget: "edbron.cloud-drives"
+  moduleName: "io.github.bmaltais.startdrive"
+  ipcTarget: "io.github.bmaltais.startdrive"
   manageIpc: false
 
-  readonly property string script: String(Qt.resolvedUrl("bin/omarchy-cloud-drives")).replace(/^file:\/\//, "")
+  // ---- what DriveRow reads ------------------------------------------------
+  readonly property alias service: service
+  readonly property color foreground: bar ? bar.foreground : Color.foreground
+  readonly property color urgent: bar ? bar.urgent : Color.urgent
+  readonly property color dim: Qt.darker(foreground, 1.4)
+  readonly property string fontFamily: bar ? bar.fontFamily : Style.font.family
+  property string expandedId: ""
 
-  property bool rcloneInstalled: false
-  property bool encrypted: false
-  property bool keyring: false
-  property string mountRoot: ""
-  property var providers: []
-  readonly property bool busy: busyId !== ""
-
-  readonly property int mountedCount: {
-    var n = 0
-    for (var i = 0; i < providers.length; i++) if (providers[i].mounted) n++
-    return n
-  }
-  readonly property int connectedCount: {
-    var n = 0
-    for (var i = 0; i < providers.length; i++) if (providers[i].configured) n++
-    return n
-  }
-  readonly property bool secure: rcloneInstalled && encrypted && keyring
-  readonly property color dim: Qt.darker(bar.foreground, 1.4)
-
-  // Cursor: one row per provider; h/l moves across that row's controls.
+  // ---- keyboard cursor ----------------------------------------------------
+  // One flat list of stops (Model.navStops): each drive's row, then the
+  // detail items of the expanded drive. h/l walks a row's controls or changes
+  // a choice; Enter activates.
   property bool cursorActive: false
-  property int selectedIndex: 0
-  property var actionCursor: ({})
-  property string busyId: ""
-  property string lastError: ""
-  property var usage: ({})
+  property int navIndex: 0
+  property var controlCursor: ({})
+  readonly property var stops: Model.navStops(service.drives, expandedId)
+  readonly property var stop: stops.length ? stops[Math.min(navIndex, stops.length - 1)] : null
 
-  // The controls of a row, left to right. "toggle" (mount / unmount) and
-  // "connect" are the row's primary action.
-  function actionsFor(p) {
-    if (!p) return []
-    if (!p.configured) return ["connect"]
-    return p.mounted ? ["open", "disconnect", "toggle"] : ["disconnect", "toggle"]
-  }
-  function primaryIndex(p) { return actionsFor(p).length - 1 }
+  readonly property Item flick: panel.loadedContent ? panel.loadedContent.flick : null
 
-  function actionCursorFor(row) {
-    var acts = actionsFor(providers[row])
-    var i = actionCursor[row]
-    return i === undefined ? Math.max(0, acts.length - 1) : Math.min(i, acts.length - 1)
+  function controlsOf(id) {
+    var d = service.drive(id)
+    return d ? Model.rowControls(d) : []
   }
-  function setActionCursor(row, idx) {
-    var next = Object.assign({}, actionCursor); next[row] = idx; actionCursor = next
+  function controlIndex(id) {
+    var controls = controlsOf(id)
+    var i = controlCursor[id]
+    return i === undefined ? controls.length - 1 : Math.min(i, controls.length - 1)
   }
-  function resetCursors() { actionCursor = ({}) }
-
-  function moveCursor(delta) {
-    var n = providers.length
-    if (!n) return
-    selectedIndex = Math.max(0, Math.min(n - 1, selectedIndex + delta))
-  }
-  function moveCursorH(delta) {
-    var acts = actionsFor(providers[selectedIndex])
-    if (!acts.length) return
-    setActionCursor(selectedIndex, Math.max(0, Math.min(acts.length - 1, actionCursorFor(selectedIndex) + delta)))
-  }
-  function activateCursor() {
-    var p = providers[selectedIndex]
-    if (!p) return
-    perform(actionsFor(p)[actionCursorFor(selectedIndex)], p)
+  function setControlIndex(id, i) {
+    var next = Object.assign({}, controlCursor)
+    next[id] = i
+    controlCursor = next
   }
 
-  // What a click on the row itself does: open it, mount it, or connect it.
-  function rowPrimary(p) { return !p.configured ? "connect" : (p.mounted ? "open" : "toggle") }
-
-  function perform(action, p) {
-    if (action === "toggle") run(p.mounted || p.active ? "unmount" : "mount", p.id)
-    else run(action, p.id)
+  function isHot(kind, id, key) {
+    if (!cursorActive || !stop || stop.kind !== kind || stop.id !== id) return false
+    if (kind === "detail") return stop.key === key
+    return key === "" || controlsOf(id)[controlIndex(id)] === key
   }
 
-  function formatBytes(n) {
-    if (n === undefined || n === null) return ""
-    var units = ["B", "KB", "MB", "GB", "TB", "PB"], i = 0
-    while (n >= 1000 && i < units.length - 1) { n /= 1000; i++ }
-    return (n >= 100 || i === 0 ? Math.round(n) : n.toFixed(1)) + " " + units[i]
-  }
-  function usageText(id) {
-    var u = usage[id]
-    if (!u || u.used === undefined) return ""
-    return u.total ? formatBytes(u.used) + " of " + formatBytes(u.total) : formatBytes(u.used) + " used"
-  }
-  function usageFraction(id) {
-    var u = usage[id]
-    return u && u.total && u.used !== undefined ? Math.max(0, Math.min(1, u.used / u.total)) : -1
-  }
-  function tildePath(p) { return String(p || "").replace(/^\/home\/[^\/]+/, "~") }
-
-  function statusText(p) {
-    if (!p.configured) return "Not connected"
-    if (busyId === p.id) return p.mounted ? "Unmounting…" : "Mounting…"
-    if (p.failed) return "Mount failed · retrying"
-    if (p.mounted) return "Mounted"
-    if (p.active) return "Mounting…"
-    return "Connected · not mounted"
-  }
-  function statusColor(p) {
-    if (p.failed) return bar.urgent
-    if (p.mounted) return Color.accent
-    return dim
-  }
-
-  property var aboutQueue: []
-  function refreshUsage() {
-    var q = []
-    for (var i = 0; i < providers.length; i++) if (providers[i].mounted) q.push(providers[i].id)
-    aboutQueue = q
-    nextAbout()
-  }
-  function nextAbout() {
-    if (aboutProc.running || !aboutQueue.length) return
-    aboutProc.pid_id = aboutQueue[0]
-    aboutQueue = aboutQueue.slice(1)
-    aboutProc.command = [script, "about", aboutProc.pid_id]
-    aboutProc.running = true
-  }
-
-  function refresh() { if (!stateProc.running) stateProc.running = true }
-
-  // connect / disconnect need a terminal (browser sign-in, 2FA, confirm);
-  // open is detached; mount / unmount run here and report failures.
-  function run(action, id) {
-    if (busyId !== "") return
-    lastError = ""
-    if (action === "connect" || action === "disconnect") {
-      Quickshell.execDetached([script, "launch", action, id])
-      close()
-      return
+  function claim(kind, id, key) {
+    cursorActive = true
+    for (var i = 0; i < stops.length; i++) {
+      var s = stops[i]
+      if (s.kind === kind && s.id === id && (kind === "row" || s.key === key)) { navIndex = i; break }
     }
-    if (action === "open") {
-      Quickshell.execDetached([script, "open", id])
-      close()
-      return
+    if (kind === "row" && key !== "") setControlIndex(id, controlsOf(id).indexOf(key))
+  }
+
+  function move(dy) {
+    cursorActive = true
+    navIndex = Math.max(0, Math.min(stops.length - 1, navIndex + dy))
+  }
+
+  function moveHorizontal(dx) {
+    if (!stop) return
+    if (stop.kind === "row") {
+      var controls = controlsOf(stop.id)
+      setControlIndex(stop.id, Math.max(0, Math.min(controls.length - 1, controlIndex(stop.id) + dx)))
+    } else if (stop.key === "cacheSize") {
+      var d = service.drive(stop.id)
+      service.set(stop.id, "cache-size", Model.stepOption(Model.CACHE_SIZES, d.settings.cacheSize, dx))
+    } else if (stop.key === "cacheAge") {
+      var e = service.drive(stop.id)
+      service.set(stop.id, "cache-age", Model.stepOption(Model.CACHE_AGES, e.settings.cacheAge, dx))
     }
-    busyId = id
-    actionProc.command = [script, action, id]
-    actionProc.running = true
   }
 
-  function allMounted() { return connectedCount > 0 && mountedCount === connectedCount }
-  function toggleAll() {
-    if (busyId !== "") return
-    lastError = ""
-    busyId = "*"
-    actionProc.command = [script, allMounted() ? "unmount-all" : "mount-all"]
-    actionProc.running = true
+  function activate() {
+    if (!stop) return
+    var d = service.drive(stop.id)
+    if (!d) return
+    if (stop.kind === "row") { perform(controlsOf(stop.id)[controlIndex(stop.id)], d); return }
+    if (stop.key === "autostart") service.set(d.id, "autostart", String(!d.settings.autostart))
+    else if (stop.key === "readOnly") service.set(d.id, "read-only", String(!d.settings.readOnly))
+    else if (stop.key === "refresh") service.refreshListing(d.id)
+    else if (stop.key === "clearCache") service.clearCache(d.id)
   }
 
-  function stateIpc() {
-    return JSON.stringify({ rclone: rcloneInstalled, encrypted: encrypted, keyring: keyring, providers: providers })
+  function perform(control, d) {
+    switch (control) {
+    case "toggle":
+      if (d.mounted || d.unit === "activating") service.unmount(d.id)
+      else service.mount(d.id)
+      break
+    case "open": service.openDrive(d.id); close(); break
+    case "connect":
+    case "disconnect": service.interactive(control, d.id); close(); break
+    case "details": toggleDetails(d.id); break
+    }
   }
 
-  IpcHandler {
-    target: "edbron.cloud-drives"
-    function state(): string { return root.stateIpc() }
-    function refresh(): string { root.refresh(); return "ok" }
-    function mount(id: string): string { root.run("mount", id); return "ok" }
-    function unmount(id: string): string { root.run("unmount", id); return "ok" }
-    function connect(id: string): string { root.run("connect", id); return "ok" }
-    function open() { root.open() }
-    function close() { root.close() }
-    function toggle() { root.toggle() }
+  function toggleDetails(id) {
+    expandedId = expandedId === id ? "" : id
+    if (expandedId !== "") service.refreshUsage()
+    claim("row", id, "")
   }
 
+  // Keep the cursor's item inside the visible part of the panel.
+  function reveal(item) {
+    if (!flick || !item) return
+    Qt.callLater(function () {
+      if (!item) return
+      var margin = Style.space(6)
+      var top = item.mapToItem(flick.contentItem, 0, 0).y
+      var bottom = top + item.height
+      var maxY = Math.max(0, flick.contentHeight - flick.height)
+      if (top < flick.contentY + margin) flick.contentY = Math.max(0, top - margin)
+      else if (bottom > flick.contentY + flick.height - margin) flick.contentY = Math.min(maxY, bottom + margin - flick.height)
+    })
+  }
+
+  // ---- bar ------------------------------------------------------------------
   implicitWidth: button.implicitWidth
   implicitHeight: button.implicitHeight
 
-  Component.onCompleted: refresh()
-  onOpenedChanged: if (opened) {
-    refresh()
-    refreshUsage()
+  onOpenedChanged: {
+    service.panelOpen = opened
+    if (!opened) return
     cursorActive = false
-    selectedIndex = 0
-    resetCursors()
-    lastError = ""
-    Qt.callLater(function() { if (panel.loadedContent) panel.loadedContent.forceActiveFocus() })
+    navIndex = 0
+    controlCursor = ({})
+    service.error = ""
+    service.notice = ""
+    service.refresh()
+    service.refreshActivity()
+    service.refreshUsage()
+    if (flick) flick.contentY = 0
+    Qt.callLater(function () { if (panel.loadedContent) panel.loadedContent.forceActiveFocus() })
   }
-  onProvidersChanged: if (selectedIndex >= providers.length) selectedIndex = 0
+  onStopsChanged: if (navIndex >= stops.length) navIndex = Math.max(0, stops.length - 1)
 
-  // Mounts can appear/vanish from the terminal flow, so poll: fast while
-  // open, slow otherwise. Usage is slower still: it asks the cloud.
-  Timer {
-    interval: root.opened ? 2000 : 30000
-    running: true
-    repeat: true
-    onTriggered: root.refresh()
-  }
-  Timer {
-    interval: 120000
-    running: root.opened
-    repeat: true
-    onTriggered: root.refreshUsage()
+  DriveService {
+    id: service
+    script: String(Qt.resolvedUrl("bin/startdrive")).replace(/^file:\/\//, "")
   }
 
-  Process {
-    id: stateProc
-    command: [root.script, "state"]
-    stdout: StdioCollector {
-      waitForEnd: true
-      onStreamFinished: {
-        try {
-          var s = JSON.parse(String(text || "{}"))
-          root.rcloneInstalled = !!s.rclone
-          root.encrypted = !!s.encrypted
-          root.keyring = !!s.keyring
-          root.mountRoot = s.root || ""
-          root.providers = s.providers || []
-        } catch (e) {
-          root.providers = []
-        }
-      }
-    }
-  }
-
-  Process {
-    id: actionProc
-    stdout: StdioCollector { waitForEnd: true }
-    stderr: StdioCollector {
-      id: actionErr
-      waitForEnd: true
-    }
-    onExited: function(code) {
-      if (code !== 0) {
-        var lines = String(actionErr.text || "").trim().split("\n")
-        root.lastError = lines[lines.length - 1] || "The action failed"
-      }
-      root.busyId = ""
-      root.refresh()
-      root.refreshUsage()
-    }
-  }
-
-  Process {
-    id: aboutProc
-    property string pid_id: ""
-    stdout: StdioCollector {
-      waitForEnd: true
-      onStreamFinished: {
-        try {
-          var u = JSON.parse(String(text || "{}"))
-          var next = Object.assign({}, root.usage)
-          next[aboutProc.pid_id] = u
-          root.usage = next
-        } catch (e) {}
-      }
-    }
-    onRunningChanged: if (!running) root.nextAbout()
+  IpcHandler {
+    target: "io.github.bmaltais.startdrive"
+    function state(): string { return JSON.stringify({ drives: service.drives, activity: service.activity }) }
+    function refresh(): string { service.refresh(); service.refreshActivity(); return "ok" }
+    function mount(id: string): string { service.mount(id); return "ok" }
+    function unmount(id: string): string { service.unmount(id); return "ok" }
+    function mountAll(): string { service.mountAll(); return "ok" }
+    function unmountAll(): string { service.unmountAll(); return "ok" }
+    function connect(id: string): string { service.interactive("connect", id); return "ok" }
+    function open() { root.open() }
+    function close() { root.close() }
+    function toggle() { root.toggle() }
   }
 
   BarIconButton {
     id: button
     anchors.fill: parent
     bar: root.bar
-    text: root.mountedCount > 0 ? "󰅟" : "󰅧"
-    onPressed: function(b) {
-      if (b === Qt.RightButton) { root.refresh(); root.refreshUsage() }
+    text: service.summary.glyph
+    onPressed: function (b) {
+      if (b === Qt.RightButton) { service.refresh(); service.refreshActivity() }
       else root.toggle()
     }
   }
@@ -284,30 +186,33 @@ Panel {
     bar: root.bar
     open: root.opened
     focusTarget: panel.loadedContent
-    contentWidth: panel.fittedContentWidth(Style.space(380))
-    contentHeight: panel.fittedContentHeight(panel.loadedContentHeight, Style.space(600))
+    contentWidth: panel.fittedContentWidth(Style.space(400))
+    contentHeight: panel.fittedContentHeight(panel.loadedContentHeight, Style.space(640))
 
     content: PanelKeyCatcher {
-      id: keyCatcher
+      id: keys
+      property alias flick: flick
       implicitHeight: column.implicitHeight
       anchors.fill: parent
-      onMoveRequested: function(dx, dy) {
+
+      onMoveRequested: function (dx, dy) {
         if (!root.cursorActive) { root.cursorActive = true; return }
-        if (dy !== 0) root.moveCursor(dy)
-        else if (dx !== 0) root.moveCursorH(dx)
+        if (dy !== 0) root.move(dy)
+        else if (dx !== 0) root.moveHorizontal(dx)
       }
-      onActivateRequested: if (root.cursorActive) root.activateCursor()
+      onActivateRequested: if (root.cursorActive) root.activate()
       onCloseRequested: root.close()
-      onTabRequested: function(direction) { root.switchPanel(direction) }
-      onTextKey: function(t) {
-        var p = root.providers[root.selectedIndex]
-        var k = String(t).toLowerCase()
-        if (k === "r") { root.refresh(); root.refreshUsage() }
-        else if (k === "a") root.toggleAll()
-        else if (!p) return
-        else if (k === "m") root.perform(p.configured ? "toggle" : "connect", p)
-        else if (k === "o" && p.mounted) root.run("open", p.id)
-        else if (k === "f" && p.configured) root.run("disconnect", p.id)
+      onTabRequested: function (direction) { root.switchPanel(direction) }
+      onTextKey: function (t) {
+        var key = String(t).toLowerCase()
+        var d = root.stop ? service.drive(root.stop.id) : null
+        if (key === "r") { service.refresh(); service.refreshActivity(); service.refreshUsage() }
+        else if (key === "a") { if (service.summary.mounted === service.summary.connected) service.unmountAll(); else service.mountAll() }
+        else if (!d) return
+        else if (key === "m") root.perform(d.configured ? "toggle" : "connect", d)
+        else if (key === "o" && d.mounted) root.perform("open", d)
+        else if (key === "f" && d.configured) root.perform("disconnect", d)
+        else if (key === "d" && d.configured) root.toggleDetails(d.id)
       }
 
       Flickable {
@@ -317,6 +222,7 @@ Panel {
         contentHeight: column.implicitHeight
         clip: true
         boundsBehavior: Flickable.StopAtBounds
+        flickableDirection: Flickable.VerticalFlick
         interactive: contentHeight > height
         ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
 
@@ -326,48 +232,39 @@ Panel {
           spacing: Style.space(12)
 
           // ---------- Hero ----------
-          Item {
-            id: header
+          PanelHero {
+            id: hero
             width: parent.width
-            implicitHeight: hero.implicitHeight
-
-            PanelHero {
-              id: hero
-              width: parent.width
-              title: "Cloud Drives"
-              detail: root.connectedCount ? root.mountedCount + "/" + root.connectedCount : ""
-              meta: {
-                if (!root.rcloneInstalled) return "Not set up · connect a drive to begin"
-                if (!root.connectedCount) return "No accounts connected"
-                return root.secure ? "Keyring-encrypted" : "Config not encrypted"
+            title: "StartDrive"
+            detail: service.summary.connected ? service.summary.mounted + "/" + service.summary.connected : ""
+            meta: Model.headline(service.summary, service.secure, service.rcloneInstalled)
+            foreground: root.foreground
+            fontFamily: root.fontFamily
+            iconOpacity: service.summary.mounted > 0 ? 1.0 : 0.5
+            iconComponent: Component {
+              Text {
+                textFormat: Text.PlainText
+                text: service.summary.glyph
+                color: service.summary.errored || service.summary.failed ? root.urgent : hero.foreground
+                font.family: hero.fontFamily
+                font.pixelSize: Style.font.display
               }
-              foreground: root.bar.foreground
-              fontFamily: root.bar.fontFamily
-              iconOpacity: root.mountedCount > 0 ? 1.0 : 0.5
-              iconComponent: Component {
-                Text {
-                  text: root.mountedCount > 0 ? "󰅟" : "󰅧"
-                  color: hero.foreground
-                  font.family: hero.fontFamily
-                  font.pixelSize: Style.font.display
-                }
-              }
+            }
 
-              // Mount or unmount every connected drive at once.
-              trailingControl: Component {
-                ToggleSwitch {
-                  id: allSwitch
-                  visible: root.connectedCount > 1
-                  checked: root.allMounted()
-                  busy: root.busy
-                  foreground: hero.foreground
-                  onToggled: root.toggleAll()
+            // Mount or unmount every connected drive at once.
+            trailingControl: Component {
+              ToggleSwitch {
+                id: allSwitch
+                visible: service.summary.connected > 1
+                checked: service.summary.mounted === service.summary.connected
+                busy: service.busy
+                foreground: hero.foreground
+                onToggled: checked ? service.unmountAll() : service.mountAll()
 
-                  PanelToolTip {
-                    visible: allSwitch.containsMouse
-                    text: root.allMounted() ? "Unmount all  (a)" : "Mount all  (a)"
-                    fontFamily: hero.fontFamily
-                  }
+                PanelToolTip {
+                  visible: allSwitch.containsMouse
+                  text: (allSwitch.checked ? "Unmount all" : "Mount all") + "  (a)"
+                  fontFamily: hero.fontFamily
                 }
               }
             }
@@ -375,16 +272,18 @@ Panel {
 
           Text {
             textFormat: Text.PlainText
-            visible: root.lastError !== "" || (root.connectedCount > 0 && !root.secure)
+            visible: text !== ""
             width: parent.width
-            text: root.lastError !== "" ? root.lastError : "The rclone config is not keyring-encrypted. Reconnect a drive to fix this."
-            color: root.bar.urgent
-            font.family: root.bar.fontFamily
+            text: service.error !== "" ? service.error
+              : (service.summary.connected > 0 && !service.secure) ? "The rclone config is not keyring-encrypted. Reconnect a drive to fix this."
+              : service.notice
+            color: service.error !== "" || !service.secure ? root.urgent : root.dim
+            font.family: root.fontFamily
             font.pixelSize: Style.font.bodySmall
             wrapMode: Text.WordWrap
           }
 
-          PanelSeparator { foreground: root.bar.foreground }
+          PanelSeparator { foreground: root.foreground }
 
           // ---------- Drives ----------
           Column {
@@ -393,23 +292,23 @@ Panel {
 
             Item {
               width: parent.width
-              implicitHeight: provHeader.implicitHeight
+              implicitHeight: header.implicitHeight
 
               PanelSectionHeader {
-                id: provHeader
+                id: header
                 text: "DRIVES"
-                foreground: root.bar.foreground
-                fontFamily: root.bar.fontFamily
+                foreground: root.foreground
+                fontFamily: root.fontFamily
                 anchors.left: parent.left
                 anchors.verticalCenter: parent.verticalCenter
               }
 
               // The mount root, as a link to the folder.
               Text {
-                id: rootLink
-                text: root.tildePath(root.mountRoot) + "  󰉋"
-                color: rootMouse.containsMouse ? root.bar.foreground : root.dim
-                font.family: root.bar.fontFamily
+                textFormat: Text.PlainText
+                text: Model.tildePath(service.mountRoot) + "  󰉋"
+                color: rootMouse.containsMouse ? root.foreground : root.dim
+                font.family: root.fontFamily
                 font.pixelSize: Style.font.caption
                 anchors.right: parent.right
                 anchors.rightMargin: Style.space(6)
@@ -420,12 +319,12 @@ Panel {
                   anchors.fill: parent
                   hoverEnabled: true
                   cursorShape: Qt.PointingHandCursor
-                  onClicked: { Quickshell.execDetached(["xdg-open", root.mountRoot]); root.close() }
+                  onClicked: { service.openRoot(); root.close() }
                 }
                 PanelToolTip {
                   visible: rootMouse.containsMouse
-                  text: "Open " + root.tildePath(root.mountRoot)
-                  fontFamily: root.bar.fontFamily
+                  text: "Open " + Model.tildePath(service.mountRoot)
+                  fontFamily: root.fontFamily
                 }
               }
             }
@@ -436,235 +335,26 @@ Panel {
               spacing: Style.space(6)
 
               Repeater {
-                model: root.providers
-                ProviderRow {
+                model: service.drives
+                DriveRow {
                   required property var modelData
-                  required property int index
                   width: driveColumn.width
-                  provider: modelData
-                  rowIndex: index
+                  drive: modelData
+                  host: root
                 }
               }
             }
           }
 
-          // ---------- Footnote ----------
           Text {
             textFormat: Text.PlainText
             width: parent.width
             wrapMode: Text.WordWrap
             text: "Sign in with your browser (Google, Microsoft) or Apple ID + 2FA (iCloud). Credentials stay in an rclone config encrypted with a key held only in your login keyring."
             color: root.dim
-            font.family: root.bar.fontFamily
+            font.family: root.fontFamily
             font.pixelSize: Style.font.caption
           }
-        }
-      }
-    }
-  }
-
-  component ProviderRow: CursorSurface {
-    id: row
-    required property var provider
-    required property int rowIndex
-    readonly property var actions: root.actionsFor(provider)
-    readonly property bool working: root.busyId === provider.id || root.busyId === "*"
-    readonly property real fraction: root.usageFraction(provider.id)
-    readonly property string usageLine: provider.mounted ? root.usageText(provider.id) : ""
-
-    function hot(action) {
-      return root.cursorActive && root.selectedIndex === rowIndex
-        && row.actions[root.actionCursorFor(rowIndex)] === action
-    }
-    function claim(action) {
-      root.cursorActive = true
-      root.selectedIndex = rowIndex
-      root.setActionCursor(rowIndex, row.actions.indexOf(action))
-    }
-
-    foreground: root.bar.foreground
-    hasCursor: root.cursorActive && root.selectedIndex === rowIndex
-    current: provider.mounted
-    implicitHeight: content.implicitHeight + Style.spacing.rowPaddingX + Style.spacing.md
-
-    // The row itself: click for its primary action. Sits below the controls.
-    MouseArea {
-      anchors.fill: parent
-      hoverEnabled: true
-      cursorShape: Qt.PointingHandCursor
-      onEntered: { root.cursorActive = true; root.selectedIndex = row.rowIndex }
-      onClicked: root.perform(root.rowPrimary(row.provider), row.provider)
-    }
-
-    Column {
-      id: content
-      anchors.left: parent.left
-      anchors.right: parent.right
-      anchors.verticalCenter: parent.verticalCenter
-      anchors.leftMargin: Style.space(10)
-      anchors.rightMargin: Style.space(10)
-      spacing: Style.space(6)
-
-      Row {
-        width: parent.width
-        spacing: Style.space(10)
-
-        Text {
-          textFormat: Text.PlainText
-          text: row.provider.glyph
-          color: row.provider.configured ? root.bar.foreground : root.dim
-          font.family: root.bar.fontFamily
-          font.pixelSize: Style.font.display
-          width: Style.space(28)
-          horizontalAlignment: Text.AlignHCenter
-          anchors.verticalCenter: parent.verticalCenter
-        }
-
-        Column {
-          id: labels
-          width: parent.width - Style.space(28) - controls.width - Style.space(20)
-          anchors.verticalCenter: parent.verticalCenter
-          spacing: Style.space(1)
-
-          Text {
-            textFormat: Text.PlainText
-            text: row.provider.name
-            color: root.bar.foreground
-            font.family: root.bar.fontFamily
-            font.pixelSize: Style.font.body
-            font.bold: true
-            elide: Text.ElideRight
-            width: parent.width
-          }
-
-          Row {
-            spacing: Style.space(6)
-            width: parent.width
-
-            Rectangle {
-              width: Style.space(7)
-              height: width
-              radius: width / 2
-              anchors.verticalCenter: parent.verticalCenter
-              visible: row.provider.configured
-              color: root.statusColor(row.provider)
-              opacity: row.working || row.provider.failed ? 0.6 : 1
-              SequentialAnimation on opacity {
-                running: row.working
-                loops: Animation.Infinite
-                NumberAnimation { to: 0.25; duration: 500 }
-                NumberAnimation { to: 1; duration: 500 }
-              }
-            }
-            Text {
-              textFormat: Text.PlainText
-              text: root.statusText(row.provider)
-              color: row.provider.failed ? root.bar.urgent : root.dim
-              font.family: root.bar.fontFamily
-              font.pixelSize: Style.font.caption
-              elide: Text.ElideRight
-              width: parent.width - (row.provider.configured ? Style.space(13) : 0)
-            }
-          }
-        }
-
-        // ---- controls ----
-        Row {
-          id: controls
-          spacing: Style.space(4)
-          anchors.verticalCenter: parent.verticalCenter
-
-          PanelActionButton {
-            visible: row.provider.configured && row.provider.mounted
-            iconText: "󰉋"
-            tooltipText: "Open in file manager  (o)"
-            foreground: root.bar.foreground
-            fontFamily: root.bar.fontFamily
-            enabled: !root.busy
-            hasCursor: row.hot("open")
-            onHovered: function(on) { if (on) row.claim("open") }
-            onClicked: root.run("open", row.provider.id)
-          }
-
-          PanelActionButton {
-            visible: row.provider.configured
-            iconText: "󰩹"
-            tooltipText: "Forget this account  (f)"
-            foreground: root.bar.foreground
-            hoverColor: root.bar.urgent
-            fontFamily: root.bar.fontFamily
-            enabled: !root.busy
-            hasCursor: row.hot("disconnect")
-            onHovered: function(on) { if (on) row.claim("disconnect") }
-            onClicked: root.run("disconnect", row.provider.id)
-          }
-
-          ToggleSwitch {
-            id: mountSwitch
-            visible: row.provider.configured
-            anchors.verticalCenter: parent.verticalCenter
-            cursorPad: Style.space(3)
-            checked: row.provider.mounted || row.provider.active
-            busy: row.working
-            foreground: root.bar.foreground
-            hasCursor: row.hot("toggle")
-            onHovered: function(on) { if (on) row.claim("toggle") }
-            onToggled: root.perform("toggle", row.provider)
-
-            PanelToolTip {
-              visible: mountSwitch.containsMouse
-              text: (mountSwitch.checked ? "Unmount" : "Mount") + "  (m)"
-              fontFamily: root.bar.fontFamily
-            }
-          }
-
-          Button {
-            visible: !row.provider.configured
-            text: "Connect"
-            iconText: "󰌘"
-            fontSize: Style.font.caption
-            foreground: root.bar.foreground
-            fontFamily: root.bar.fontFamily
-            horizontalPadding: Style.spacing.md
-            verticalPadding: Style.spacing.controlPaddingY
-            bordered: true
-            enabled: !root.busy
-            hasCursor: row.hot("connect")
-            onHovered: function(isHovered) { if (isHovered) row.claim("connect") }
-            onClicked: root.run("connect", row.provider.id)
-          }
-        }
-      }
-
-      // Storage: a slim meter and the figures, once the drive reports them.
-      Column {
-        visible: row.usageLine !== ""
-        width: parent.width - Style.space(38)
-        x: Style.space(38)
-        spacing: Style.space(4)
-
-        Rectangle {
-          visible: row.fraction >= 0
-          width: parent.width
-          height: Style.space(3)
-          radius: height / 2
-          color: Util.alpha(root.bar.foreground, 0.12)
-
-          Rectangle {
-            width: Math.max(parent.height, parent.width * Math.max(0, row.fraction))
-            height: parent.height
-            radius: height / 2
-            color: row.fraction > 0.9 ? root.bar.urgent : Color.accent
-            Behavior on width { NumberAnimation { duration: Style.duration(160); easing.type: Easing.OutCubic } }
-          }
-        }
-
-        Text {
-          textFormat: Text.PlainText
-          text: row.usageLine
-          color: root.dim
-          font.family: root.bar.fontFamily
-          font.pixelSize: Style.font.caption
         }
       }
     }

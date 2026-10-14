@@ -1,0 +1,12 @@
+{
+  "name": "startdrive",
+  "private": true,
+  "version": "0.2.0",
+  "description": "Checks for StartDrive: Node tests for the pure JS and the CLI, plus shellcheck and the Omarchy manifest validator.",
+  "scripts": {
+    "test": "node --test",
+    "lint:sh": "scripts/lint-sh.sh",
+    "validate": "omarchy plugin validate .",
+    "check": "node --test && scripts/lint-sh.sh && omarchy plugin validate ."
+  }
+}

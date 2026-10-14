@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+# StartDrive: your cloud drives as folders under ~/Cloud, through rclone.
+# This is the command-line half of the plugin; Panel.qml calls it for
+# everything and parses the JSON that `state` and `activity` print.
+
+set -euo pipefail
+
+SD_HOME="$(cd -- "$(dirname -- "$(readlink -f -- "${BASH_SOURCE[0]}")")/.." && pwd)"
+readonly SD_HOME
+
+for module in common system drive rc cache settings signin; do
+  # shellcheck source=/dev/null
+  source "$SD_HOME/lib/$module.sh"
+done
+
+usage() {
+  cat <<'USAGE'
+Usage: startdrive <command> [drive] [args]
+
+Drives:   google, onedrive, icloud
+
+Status:   state                      everything the panel shows, as JSON
+          activity                   transfers and cache use of mounted drives, as JSON
+          about <drive>              storage used and total, as JSON
+Mounts:   mount | unmount <drive>
+          mount-all | unmount-all
+          open <drive>               open the folder in the file manager
+Accounts: connect | disconnect <drive>   interactive (run in a terminal)
+Cache:    clear-cache <drive>        delete the cached files (refused while uploading)
+          refresh-listing <drive>    forget cached directory listings
+Settings: set <drive> <key> <value>  cache-size 1G..50G, cache-age 6h..720h,
+                                     read-only true|false, autostart true|false
+Machine:  setup                      install rclone, encrypt the config, install the unit
+          launch <command> <drive>   run connect or disconnect in a floating terminal
+          uninstall [--purge]        remove the unit and settings (--purge: also the keyring key)
+USAGE
+}
+
+main() {
+  local command="${1:-}"
+  case "$command" in
+    state) cmd_state ;;
+    activity) cmd_activity ;;
+    setup) cmd_setup ;;
+    migrate) migrate_legacy ;;
+    uninstall) cmd_uninstall "${2:-}" ;;
+    mount-all) cmd_all mount ;;
+    unmount-all) cmd_all unmount ;;
+    launch) cmd_launch "${2:-}" "${3:-}" ;;
+    connect | disconnect | mount | unmount | open | about | clear-cache | refresh-listing)
+      local id="${2:?missing drive (google, onedrive, icloud)}"
+      remote_of "$id" >/dev/null # rejects an unknown drive with a clear message
+      "cmd_${command//-/_}" "$id"
+      ;;
+    set)
+      remote_of "${2:?missing drive}" >/dev/null
+      cmd_set "$2" "${3:?missing key}" "${4:?missing value}"
+      ;;
+    -h | --help | help | "") usage ;;
+    *)
+      usage >&2
+      exit 2
+      ;;
+  esac
+}
+
+main "$@"

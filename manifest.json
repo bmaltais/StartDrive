@@ -1,33 +1,25 @@
 {
   "schemaVersion": 1,
-  "id": "edbron.cloud-drives",
-  "name": "Cloud Drives",
-  "version": "0.1.0",
-  "author": "edbron",
+  "id": "io.github.bmaltais.startdrive",
+  "name": "StartDrive",
+  "version": "0.2.0",
+  "author": "Bernard Maltais",
   "license": "MIT",
-  "description": "Connect iCloud Drive, Google Drive and OneDrive as folders under ~/Cloud, with credentials kept in the system keyring.",
-  "kinds": [
-    "bar-widget"
-  ],
+  "description": "Cloud drives as folders from the Omarchy bar: Google Drive, OneDrive and iCloud Drive through rclone, with live upload activity, cache controls and per-drive settings.",
+  "kinds": ["bar-widget"],
   "activation": "on-demand",
   "entryPoints": {
     "barWidget": "Panel.qml"
   },
   "barWidget": {
-    "displayName": "Cloud Drives",
-    "description": "Mount and manage iCloud Drive, Google Drive and OneDrive.",
+    "displayName": "StartDrive",
+    "description": "Mount and manage Google Drive, OneDrive and iCloud Drive.",
     "category": "System",
-    "aliases": [
-      "cloud",
-      "icloud",
-      "google-drive",
-      "onedrive",
-      "rclone"
-    ],
+    "aliases": ["cloud", "drive", "icloud", "google-drive", "onedrive", "rclone"],
     "allowMultiple": false,
     "defaultSection": "right",
     "defaults": {},
     "schema": []
   },
-  "homepage": "https://github.com/edbron/omarchy-cloud-drives"
+  "homepage": "https://github.com/bmaltais/omarchy-cloud-drives"
 }
