@@ -16,6 +16,7 @@ fail=0
 
 detached() {
   local out
+  [[ -x $kit ]] || { echo "lint-rules: scripts/devkit is empty, so the devkit's rules are skipped (git submodule update --init scripts/devkit)" >&2; return 0; }
   out=$("$kit" "$root" 2>&1) || { printf '%s\n' "$out"; return 1; }
 }
 

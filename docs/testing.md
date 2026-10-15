@@ -77,7 +77,7 @@ For when someone wants to see the change in their own shell.
 | Path | What it is |
 |---|---|
 | `devkit.conf` | what the devkit needs to know about this plugin: its id, layer, demo mode (`DEVKIT_ENV`, the sandbox hook), commands |
-| `scripts/devkit/` | the devkit (a git subtree: `git subtree pull --prefix scripts/devkit https://github.com/bmaltais/omarchy-plugin-devkit vX.Y.Z --squash`) |
+| `scripts/devkit/` | the devkit, a git submodule (clone with `--recurse-submodules`, or `git submodule update --init`; update with `git -C scripts/devkit checkout vX.Y.Z`, then commit): development tooling, so it is not in what a user installs |
 | `scripts/dev`, `scripts/tour.sh`, `scripts/sheet` | two-line wrappers of the devkit's `dev`, `tour`, `sheet` for this checkout |
 | `scripts/check.sh`, `lint-sh.sh`, `lint-rules.sh`, `lint-qml.py`, `qmllint-baseline.txt`, `.shellcheckrc` | the checks |
 | `.githooks/pre-commit`, `.github/workflows/check.yml` | the hook (refuses `main`, runs the checks) and the CI job (shellcheck, the CLI tests, the Node tests) |

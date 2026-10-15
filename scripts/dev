@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
-# The devkit's `dev`, run for this checkout (scripts/devkit; docs/testing.md).
+# The devkit's `dev`, run for this checkout (scripts/devkit, a submodule; docs/testing.md).
 export DEVKIT_APP_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-exec "$DEVKIT_APP_ROOT/scripts/devkit/bin/dev" "$@"
+kit=$DEVKIT_APP_ROOT/scripts/devkit/bin/dev
+[[ -x $kit ]] || { echo "scripts/devkit is empty: git submodule update --init scripts/devkit" >&2; exit 1; }
+exec "$kit" "$@"

@@ -45,6 +45,8 @@ It runs on demo drives (`lib/demo.sh`), so a click on a mount switch or a forgot
 
 ## Development install
 
+Clone with `git clone --recurse-submodules` (or run `git submodule update --init` in an existing clone): `scripts/devkit`, the test session and recorder, is a submodule of the shared [omarchy-plugin-devkit](https://github.com/bmaltais/omarchy-plugin-devkit). It is development tooling, so it is not in what `omarchy plugin add` installs.
+
 To run it in your own shell, the plugin folder may not contain symlinks and the shell's watcher does not follow them, so the installed plugin is a plain copy of the checkout. One command makes it, restarts the shell and reports QML errors:
 
 ```sh
