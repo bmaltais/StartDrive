@@ -1,5 +1,5 @@
 <p align="center">
-  <img alt="The StartDrive panel: Google Drive synced, OneDrive uploading a file at 1.2 MB/s, Dropbox ready to connect" src="screenshots/panel.png" width="400" />
+  <img alt="A tour of StartDrive: opening the panel from the bar, a drive's details, and the Cache, Behaviour and Maintenance tabs" src="screenshots/hero.gif" width="520" />
 </p>
 
 <h1 align="center">StartDrive</h1>
