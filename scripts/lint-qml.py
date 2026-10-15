@@ -8,16 +8,22 @@ using a known name again adds nothing and a new name fails. (The same idea as St
 
   scripts/lint-qml.py            check
   scripts/lint-qml.py --update   rewrite the baseline
+
+Some warnings are bugs, never noise: a property that shadows one of Item's own (`data`, `state`, `children`), an id that shadows
+a property, a property bound twice. They are not baselineable: they fail the check even when the baseline lists them, and
+--update refuses to write while one is present. (A property named `data` once got through a blind --update.)
 """
 import json
+import os
 import pathlib
 import re
 import subprocess
 import sys
 
-root = pathlib.Path(__file__).resolve().parent.parent
+root = pathlib.Path(os.environ.get("LINT_QML_ROOT") or pathlib.Path(__file__).resolve().parent.parent)
 baseline_path = root / "scripts" / "qmllint-baseline.txt"
 files = sorted(p.name for p in root.glob("*.qml"))
+NEVER_BASELINE = {"property-override", "id-shadows-member", "duplicate-property-binding"}
 
 
 def find_qmllint():
@@ -53,6 +59,13 @@ if not qmllint:
     sys.exit(0)
 
 current = current_entries(qmllint)
+bugs = [e for e in current if e.split("\t")[1] in NEVER_BASELINE]
+if bugs:
+    print("lint-qml: these are bugs, not noise, and cannot be baselined (file, category, message):", file=sys.stderr)
+    for e in bugs:
+        print("  " + "  |  ".join(e.split("\t")), file=sys.stderr)
+    print("\nRename the property or id (a name Item already has, such as data, state, children or parent, hides its own).", file=sys.stderr)
+    sys.exit(1)
 if "--update" in sys.argv:
     baseline_path.write_text("\n".join(current) + "\n", encoding="utf-8")
     print(f"lint-qml: baseline rewritten with {len(current)} entries")
