@@ -141,9 +141,7 @@ cmd_disconnect() {
   systemctl --user disable "$(unit_of "$id")" 2>/dev/null || true
   is_configured "$id" && rclone config delete "$(remote_of "$id")"
   rm -f -- "$(settings_file "$id")"
-  while read -r dir; do
-    [[ $dir == "$CACHE_ROOT"/vfs/?* || $dir == "$CACHE_ROOT"/vfsMeta/?* ]] && rm -rf -- "$dir"
-  done < <(cache_dirs "$id")
+  delete_cache_files "$id"
   rmdir "$(mount_path "$id")" 2>/dev/null || true
   echo "$name disconnected."
 }

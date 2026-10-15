@@ -5,7 +5,7 @@ const path = require("node:path")
 
 // DriveModel.js is a QML library; load it as a plain script.
 const source = fs.readFileSync(path.join(__dirname, "..", "DriveModel.js"), "utf8").replace(/^\.pragma.*$/m, "")
-const M = new Function(source + "\nreturn { formatBytes, formatSpeed, usageText, usageFraction, driveStatus, summarize, headline, rowControls, primaryControl, detailItems, navStops, DETAIL_TABS, stepOption, tildePath, GLYPH, CACHE_SIZES }")()
+const M = new Function(source + "\nreturn { formatBytes, formatSpeed, usageText, usageFraction, driveStatus, summarize, headline, rowControls, primaryControl, detailItems, navStops, DETAIL_TABS, stepOption, tildePath, GLYPH, CACHE_SIZES, CACHE_AGES, SETTINGS, DETAIL_SETTING, settingValue, withSetting, flipped, stepped, controlAction, detailAction, stepAction }")()
 
 const drive = (over) => Object.assign({ id: "google", configured: true, mounted: true, unit: "active" }, over)
 
@@ -84,3 +84,64 @@ test("stepOption stops at the ends and tolerates unknown values", () => {
 })
 
 test("tildePath", () => assert.strictEqual(M.tildePath("/home/bernard/Cloud/X"), "~/Cloud/X"))
+
+test("settings read, change and step through their one table", () => {
+  const d = drive({ settings: { cacheSize: "4G", cacheAge: "72h", readOnly: false, autostart: true } })
+  assert.strictEqual(M.settingValue(d, "cache-size"), "4G")
+  assert.strictEqual(M.settingValue(d, "read-only"), "false")
+  assert.strictEqual(M.flipped(d, "read-only"), "true")
+  assert.strictEqual(M.flipped(d, "autostart"), "false")
+  assert.strictEqual(M.stepped(d, "cache-age", 1), "168h")
+  const next = M.withSetting(d, "read-only", "true")
+  assert.strictEqual(next.settings.readOnly, true)
+  assert.strictEqual(d.settings.readOnly, false, "the original is untouched")
+  assert.strictEqual(M.withSetting(d, "cache-size", "10G").settings.cacheSize, "10G")
+})
+
+test("every detail item that edits a setting names a real one", () => {
+  for (const setting of Object.values(M.DETAIL_SETTING)) assert.ok(M.SETTINGS[setting], setting)
+})
+
+test("a row button maps to one action", () => {
+  assert.deepStrictEqual(M.controlAction("toggle", drive()), { type: "unmount" })
+  assert.deepStrictEqual(M.controlAction("toggle", drive({ mounted: false, unit: "activating" })), { type: "unmount" })
+  assert.deepStrictEqual(M.controlAction("toggle", drive({ mounted: false, unit: "inactive" })), { type: "mount" })
+  assert.deepStrictEqual(M.controlAction("disconnect", drive()), { type: "interactive", command: "disconnect" })
+  assert.deepStrictEqual(M.controlAction("connect", drive()), { type: "interactive", command: "connect" })
+  assert.deepStrictEqual(M.controlAction("open", drive()), { type: "open" })
+  assert.deepStrictEqual(M.controlAction("details", drive()), { type: "details" })
+  assert.strictEqual(M.controlAction("nonsense", drive()), null)
+})
+
+test("every control the cursor can reach has an action", () => {
+  for (const d of [drive(), drive({ mounted: false }), drive({ configured: false, mounted: false })]) {
+    for (const c of M.rowControls(d)) assert.ok(M.controlAction(c, d), c)
+  }
+})
+
+test("a detail item activates to a setting, a refresh or a purge", () => {
+  const d = drive({ settings: { cacheSize: "4G", cacheAge: "72h", readOnly: false, autostart: true } })
+  assert.deepStrictEqual(M.detailAction(d, "readOnly"), { type: "set", key: "read-only", value: "true" })
+  assert.deepStrictEqual(M.detailAction(d, "autostart"), { type: "set", key: "autostart", value: "false" })
+  assert.deepStrictEqual(M.detailAction(d, "refresh"), { type: "refreshListing" })
+  assert.deepStrictEqual(M.detailAction(d, "clearCache"), { type: "clearCache" })
+  assert.strictEqual(M.detailAction(d, "tabs"), null)
+})
+
+test("every detail item the cursor can reach reacts to Enter or to h/l", () => {
+  const d = drive({ settings: { cacheSize: "4G", cacheAge: "72h", readOnly: false, autostart: true } })
+  for (const tab of M.DETAIL_TABS.map((t) => t.value)) {
+    for (const item of M.detailItems(d, tab)) {
+      assert.ok(M.detailAction(d, item) || M.stepAction(d, item, 1, tab), `${tab}/${item}`)
+    }
+  }
+})
+
+test("h and l step the tabs and the choice settings, and ignore toggles", () => {
+  const d = drive({ settings: { cacheSize: "4G", cacheAge: "72h", readOnly: false, autostart: true } })
+  assert.deepStrictEqual(M.stepAction(d, "tabs", 1, "cache"), { type: "tab", value: "behaviour" })
+  assert.deepStrictEqual(M.stepAction(d, "cacheSize", -1, "cache"), { type: "set", key: "cache-size", value: "1G" })
+  assert.deepStrictEqual(M.stepAction(d, "cacheAge", 1, "cache"), { type: "set", key: "cache-age", value: "168h" })
+  assert.strictEqual(M.stepAction(d, "readOnly", 1, "behaviour"), null)
+  assert.strictEqual(M.stepAction(d, "clearCache", 1, "maintenance"), null)
+})

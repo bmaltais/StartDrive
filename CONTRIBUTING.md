@@ -34,3 +34,7 @@ npm run check                         # node tests, shellcheck, omarchy plugin v
 ```
 
 CI runs the tests and shellcheck. Before a release, confirm the marketplace rules: `omarchy plugin validate .`, no symlinks, a README and a LICENSE, and a namespaced id. Keep [docs/SECURITY.md](docs/SECURITY.md) true: any new dependency, command, file or privilege goes in it.
+
+## README images
+
+`screenshots/` holds the panel and tab shots, and `hero.gif`, the tour at the top of the README. `scripts/record-hero.sh --install` films the tour again on a temporary virtual monitor, so none of your own windows are in it; it moves the real pointer and types into the panel for about 40 seconds, and only looks (it never clicks a switch or changes a setting). It needs `ydotool` with a writable `/dev/uinput`, `grim` and `ffmpeg`, and the installed plugin must be the version you want to film. `preview.png`, the marketplace's picture, is a collage of the shots: `scripts/make-preview.sh` rebuilds it after you retake any of them.

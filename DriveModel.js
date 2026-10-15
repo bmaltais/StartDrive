@@ -20,6 +20,42 @@ var CACHE_AGES = [
   { value: "720h", label: "30 d" }
 ]
 
+// The per-drive settings. `key` is what `startdrive set` takes; `field` is
+// where the drive's `settings` object carries it. Booleans travel as "true" /
+// "false". Presets (`options`) must pass the CLI's allow-list in lib/settings.sh.
+var SETTINGS = {
+  "cache-size": { field: "cacheSize", options: CACHE_SIZES },
+  "cache-age": { field: "cacheAge", options: CACHE_AGES },
+  "read-only": { field: "readOnly", boolean: true },
+  "autostart": { field: "autostart", boolean: true }
+}
+
+// The setting each detail item (a cursor stop) edits.
+var DETAIL_SETTING = {
+  cacheSize: "cache-size", cacheAge: "cache-age", readOnly: "read-only", autostart: "autostart"
+}
+
+function settingValue(drive, key) {
+  return String(drive.settings[SETTINGS[key].field])
+}
+
+// A copy of the drive with one setting changed, to show it before the next poll.
+function withSetting(drive, key, value) {
+  var settings = Object.assign({}, drive.settings)
+  settings[SETTINGS[key].field] = SETTINGS[key].boolean ? value === "true" : value
+  return Object.assign({}, drive, { settings: settings })
+}
+
+// The value a toggle sets next.
+function flipped(drive, key) {
+  return String(settingValue(drive, key) !== "true")
+}
+
+// The next preset of a choice setting, `delta` steps along.
+function stepped(drive, key, delta) {
+  return stepOption(SETTINGS[key].options, settingValue(drive, key), delta)
+}
+
 // Glyphs from the Material Design set in the Nerd Font Omarchy ships.
 var GLYPH = {
   idle: "\uDB80\uDD63",      // cloud outline  U+F0163
@@ -148,6 +184,42 @@ function detailItems(drive, tab) {
     items.push("clearCache")
   } else items.push("cacheSize", "cacheAge")
   return items
+}
+
+// ---- What a control does ------------------------------------------------
+// Enter, a click and h/l all ask here and get an action back, so the keyboard
+// and the pointer cannot disagree. Panel.dispatch carries the action out:
+//   { type: "mount" | "unmount" | "open" | "details" | "refreshListing" | "clearCache" }
+//   { type: "interactive", command: "connect" | "disconnect" }
+//   { type: "set", key, value }   { type: "tab", value }
+
+// A row's button (see rowControls).
+function controlAction(control, drive) {
+  switch (control) {
+  case "toggle": return { type: (drive.mounted || drive.unit === "activating") ? "unmount" : "mount" }
+  case "open": return { type: "open" }
+  case "details": return { type: "details" }
+  case "connect":
+  case "disconnect": return { type: "interactive", command: control }
+  }
+  return null
+}
+
+// Enter or a click on a detail item (see detailItems).
+function detailAction(drive, item) {
+  var key = DETAIL_SETTING[item]
+  if (key) return { type: "set", key: key, value: flipped(drive, key) }
+  if (item === "refresh") return { type: "refreshListing" }
+  if (item === "clearCache") return { type: "clearCache" }
+  return null
+}
+
+// h or l (delta -1 or +1) on a detail item: the tabs and the choice settings.
+function stepAction(drive, item, delta, tab) {
+  if (item === "tabs") return { type: "tab", value: stepOption(DETAIL_TABS, tab, delta) }
+  var key = DETAIL_SETTING[item]
+  if (key && SETTINGS[key].options) return { type: "set", key: key, value: stepped(drive, key, delta) }
+  return null
 }
 
 function navStops(drives, expandedId, tab) {

@@ -411,7 +411,7 @@ Column {
       hasCursor: card.host.isHot("detail", card.drive.id, "autostart")
       onHasCursorChanged: if (hasCursor) card.host.reveal(autoToggle)
       onHovered: function (on) { if (on) card.host.claim("detail", card.drive.id, "autostart") }
-      onClicked: card.service.set(card.drive.id, "autostart", String(!card.drive.settings.autostart))
+      onClicked: card.host.activateDetail("autostart", card.drive)
     }
 
     Toggle {
@@ -426,7 +426,7 @@ Column {
       hasCursor: card.host.isHot("detail", card.drive.id, "readOnly")
       onHasCursorChanged: if (hasCursor) card.host.reveal(readOnlyToggle)
       onHovered: function (on) { if (on) card.host.claim("detail", card.drive.id, "readOnly") }
-      onClicked: card.service.set(card.drive.id, "read-only", String(!card.drive.settings.readOnly))
+      onClicked: card.host.activateDetail("readOnly", card.drive)
     }
 
     }
@@ -453,7 +453,7 @@ Column {
         enabled: !card.service.busy
         hasCursor: card.host.isHot("detail", card.drive.id, "refresh")
         onHovered: function (on) { if (on) card.host.claim("detail", card.drive.id, "refresh") }
-        onClicked: card.service.refreshListing(card.drive.id)
+        onClicked: card.host.activateDetail("refresh", card.drive)
       }
     }
 
@@ -473,7 +473,7 @@ Column {
         enabled: !card.service.busy && card.pendingFiles === 0
         hasCursor: card.host.isHot("detail", card.drive.id, "clearCache")
         onHovered: function (on) { if (on) card.host.claim("detail", card.drive.id, "clearCache") }
-        onClicked: card.service.clearCache(card.drive.id)
+        onClicked: card.host.activateDetail("clearCache", card.drive)
       }
     }
     }

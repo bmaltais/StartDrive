@@ -66,14 +66,7 @@ Item {
 
   // Settings show their new value at once; the next poll confirms it.
   function set(id, key, value) {
-    var field = ({ "cache-size": "cacheSize", "cache-age": "cacheAge", "read-only": "readOnly", "autostart": "autostart" })[key]
-    var next = drives.map(function (d) {
-      if (d.id !== id) return d
-      var settings = Object.assign({}, d.settings)
-      settings[field] = (key === "read-only" || key === "autostart") ? value === "true" : value
-      return Object.assign({}, d, { settings: settings })
-    })
-    drives = next
+    drives = drives.map(function (d) { return d.id === id ? Model.withSetting(d, key, value) : d })
     run(["set", id, key, value], id)
   }
 
