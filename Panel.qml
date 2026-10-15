@@ -76,35 +76,37 @@ Panel {
     if (stop.kind === "row") {
       var controls = controlsOf(stop.id)
       setControlIndex(stop.id, Math.max(0, Math.min(controls.length - 1, controlIndex(stop.id) + dx)))
-    } else if (stop.key === "tabs") {
-      detailTab = Model.stepOption(Model.DETAIL_TABS, detailTab, dx)
-    } else if (Model.DETAIL_SETTING[stop.key] && Model.SETTINGS[Model.DETAIL_SETTING[stop.key]].options) {
-      var key = Model.DETAIL_SETTING[stop.key]
-      service.set(stop.id, key, Model.stepped(service.drive(stop.id), key, dx))
+      return
     }
+    var d = service.drive(stop.id)
+    if (d) dispatch(Model.stepAction(d, stop.key, dx, detailTab), d)
   }
 
   function activate() {
     if (!stop) return
     var d = service.drive(stop.id)
     if (!d) return
-    if (stop.kind === "row") { perform(controlsOf(stop.id)[controlIndex(stop.id)], d); return }
-    var setting = Model.DETAIL_SETTING[stop.key]
-    if (setting) service.set(d.id, setting, Model.flipped(d, setting))
-    else if (stop.key === "refresh") service.refreshListing(d.id)
-    else if (stop.key === "clearCache") service.clearCache(d.id)
+    if (stop.kind === "row") perform(controlsOf(stop.id)[controlIndex(stop.id)], d)
+    else activateDetail(stop.key, d)
   }
 
-  function perform(control, d) {
-    switch (control) {
-    case "toggle":
-      if (d.mounted || d.unit === "activating") service.unmount(d.id)
-      else service.mount(d.id)
-      break
+  // A row button, from the keyboard or a click.
+  function perform(control, d) { dispatch(Model.controlAction(control, d), d) }
+  // A detail item, from the keyboard or a click.
+  function activateDetail(item, d) { dispatch(Model.detailAction(d, item), d) }
+
+  function dispatch(action, d) {
+    if (!action) return
+    switch (action.type) {
+    case "mount": service.mount(d.id); break
+    case "unmount": service.unmount(d.id); break
     case "open": service.openDrive(d.id); close(); break
-    case "connect":
-    case "disconnect": service.interactive(control, d.id); close(); break
+    case "interactive": service.interactive(action.command, d.id); close(); break
     case "details": toggleDetails(d.id); break
+    case "set": service.set(d.id, action.key, action.value); break
+    case "refreshListing": service.refreshListing(d.id); break
+    case "clearCache": service.clearCache(d.id); break
+    case "tab": detailTab = action.value; break
     }
   }
 

@@ -186,6 +186,42 @@ function detailItems(drive, tab) {
   return items
 }
 
+// ---- What a control does ------------------------------------------------
+// Enter, a click and h/l all ask here and get an action back, so the keyboard
+// and the pointer cannot disagree. Panel.dispatch carries the action out:
+//   { type: "mount" | "unmount" | "open" | "details" | "refreshListing" | "clearCache" }
+//   { type: "interactive", command: "connect" | "disconnect" }
+//   { type: "set", key, value }   { type: "tab", value }
+
+// A row's button (see rowControls).
+function controlAction(control, drive) {
+  switch (control) {
+  case "toggle": return { type: (drive.mounted || drive.unit === "activating") ? "unmount" : "mount" }
+  case "open": return { type: "open" }
+  case "details": return { type: "details" }
+  case "connect":
+  case "disconnect": return { type: "interactive", command: control }
+  }
+  return null
+}
+
+// Enter or a click on a detail item (see detailItems).
+function detailAction(drive, item) {
+  var key = DETAIL_SETTING[item]
+  if (key) return { type: "set", key: key, value: flipped(drive, key) }
+  if (item === "refresh") return { type: "refreshListing" }
+  if (item === "clearCache") return { type: "clearCache" }
+  return null
+}
+
+// h or l (delta -1 or +1) on a detail item: the tabs and the choice settings.
+function stepAction(drive, item, delta, tab) {
+  if (item === "tabs") return { type: "tab", value: stepOption(DETAIL_TABS, tab, delta) }
+  var key = DETAIL_SETTING[item]
+  if (key && SETTINGS[key].options) return { type: "set", key: key, value: stepped(drive, key, delta) }
+  return null
+}
+
 function navStops(drives, expandedId, tab) {
   var stops = []
   for (var i = 0; i < drives.length; i++) {
