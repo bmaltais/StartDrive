@@ -81,6 +81,7 @@ Item {
   function interactive(command, id) {
     Quickshell.execDetached([script, "launch", command, id])
   }
+  function addRemote() { Quickshell.execDetached([script, "launch", "add"]) }
   function openDrive(id) { Quickshell.execDetached([script, "open", id]) }
   function openRoot() { Quickshell.execDetached(["xdg-open", mountRoot]) }
 

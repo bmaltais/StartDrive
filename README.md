@@ -1,12 +1,12 @@
 <p align="center">
-  <img alt="The StartDrive panel: Google Drive synced, OneDrive uploading a file at 1.2 MB/s, iCloud Drive ready to connect" src="screenshots/panel.png" width="400" />
+  <img alt="The StartDrive panel: Google Drive synced, OneDrive uploading a file at 1.2 MB/s, Dropbox ready to connect" src="screenshots/panel.png" width="400" />
 </p>
 
 <h1 align="center">StartDrive</h1>
 
 <p align="center">
   <b>Your cloud drives as plain folders, from a bar widget for Omarchy.</b><br>
-  Google Drive, OneDrive and iCloud Drive mounted under <code>~/Cloud</code> with rclone,
+  Google Drive, OneDrive and Dropbox, plus any other rclone backend you add, mounted under <code>~/Cloud</code> with rclone,
   with live upload activity, cache controls and per-drive settings.
 </p>
 
@@ -30,7 +30,7 @@ It adds a cloud icon to the bar. The first time you connect a drive, `rclone` an
 ```
 ~/Cloud/GoogleDrive
 ~/Cloud/OneDrive
-~/Cloud/iCloudDrive
+~/Cloud/Dropbox
 ```
 
 ## Tour
@@ -69,7 +69,8 @@ Run these with `omarchy-shell io.github.bmaltais.startdrive <command>`, for inst
 | `toggle`, `open`, `close` | Shows or hides the panel |
 | `state` | Prints the drives and their activity as JSON |
 | `refresh` | Re-reads the state |
-| `mount ID`, `unmount ID` | Mounts or unmounts a drive (`google`, `onedrive` or `icloud`) |
+| `add` | Runs rclone's questionnaire to add any other backend (SFTP, WebDAV, S3, B2 ...); a remote named with letters, digits, `-` or `_` then shows up as a drive |
+| `mount ID`, `unmount ID` | Mounts or unmounts a drive (`google`, `onedrive`, `dropbox`, or `r-<name>` for a remote you added) |
 | `mountAll`, `unmountAll` | Does it for every connected drive |
 | `connect ID` | Starts the sign-in in a terminal |
 
@@ -77,7 +78,7 @@ The helper script works on its own too: run `~/.config/omarchy/plugins/io.github
 
 ## Security
 
-Plugins run unsandboxed, so this one keeps its footprint small and documents it. The rclone config is encrypted with a random 256-bit key that lives only in your login keyring. Google and OneDrive sign in with OAuth in your browser, and iCloud's password never appears in a command line, the environment or a log. Mounts are private to your user, and the remote-control socket each mount opens sits in a `0700` directory. The full model, every dependency and privilege boundary, and the files the plugin touches are in [docs/SECURITY.md](docs/SECURITY.md).
+Plugins run unsandboxed, so this one keeps its footprint small and documents it. The rclone config is encrypted with a random 256-bit key that lives only in your login keyring. Google Drive, OneDrive and Dropbox sign in with OAuth in your browser, so no password passes through the plugin. Mounts are private to your user, and the remote-control socket each mount opens sits in a `0700` directory. The full model, every dependency and privilege boundary, and the files the plugin touches are in [docs/SECURITY.md](docs/SECURITY.md).
 
 ## Update and remove
 

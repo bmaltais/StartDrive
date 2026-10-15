@@ -270,7 +270,7 @@ Column {
       }
 
       Repeater {
-        model: card.activity ? card.activity.transfers : []
+        model: card.activity ? card.activity.transfers.slice(0, 3) : []
 
         Column {
           id: transfer
@@ -317,11 +317,46 @@ Column {
 
     PanelSeparator { foreground: card.fg }
 
-    PanelSectionHeader {
-      text: "CACHE"
+    // The tabs and the body they open into, with no gap between.
+    Column {
+      width: parent.width
+      spacing: 0
+
+    Tabs {
+      id: tabs
+      width: parent.width
+      options: Model.DETAIL_TABS
+      value: card.host.detailTab
       foreground: card.fg
       fontFamily: card.fontFamily
+      hasCursor: card.host.isHot("detail", card.drive.id, "tabs")
+      onHasCursorChanged: if (hasCursor) card.host.reveal(tabs)
+      onHovered: card.host.claim("detail", card.drive.id, "tabs")
+      onPicked: function (v) { card.host.detailTab = v }
     }
+
+    // The body the tabs open into: sides and bottom only, the top is the baseline.
+    Item {
+      id: tabBody
+      width: parent.width
+      implicitHeight: groups.implicitHeight + Style.space(8)
+      height: implicitHeight
+
+      Rectangle { anchors.fill: parent; color: tabs.fill; bottomLeftRadius: Style.space(7); bottomRightRadius: Style.space(7) }
+      Rectangle { x: 0; width: 1; height: parent.height; color: tabs.line }
+      Rectangle { x: parent.width - 1; width: 1; height: parent.height; color: tabs.line }
+      Rectangle { y: parent.height - 1; width: parent.width; height: 1; color: tabs.line }
+
+      Column {
+        id: groups
+        x: Style.space(2)
+        y: Style.space(4)
+        width: parent.width - Style.space(4)
+        spacing: 0
+    Column {
+      width: parent.width
+      spacing: Style.space(4)
+      visible: card.host.detailTab === "cache"
 
     DetailLine {
       itemKey: "cacheSize"
@@ -357,13 +392,15 @@ Column {
       }
     }
 
-    PanelSectionHeader {
-      text: "BEHAVIOUR"
-      foreground: card.fg
-      fontFamily: card.fontFamily
     }
 
+    Column {
+      width: parent.width
+      spacing: Style.space(4)
+      visible: card.host.detailTab === "behaviour"
+
     Toggle {
+      id: autoToggle
       width: parent.width
       label: "Mount at login"
       description: "Mount this drive when your session starts"
@@ -372,11 +409,13 @@ Column {
       fontFamily: card.fontFamily
       enabled: !card.service.busy
       hasCursor: card.host.isHot("detail", card.drive.id, "autostart")
+      onHasCursorChanged: if (hasCursor) card.host.reveal(autoToggle)
       onHovered: function (on) { if (on) card.host.claim("detail", card.drive.id, "autostart") }
       onClicked: card.service.set(card.drive.id, "autostart", String(!card.drive.settings.autostart))
     }
 
     Toggle {
+      id: readOnlyToggle
       width: parent.width
       label: "Read-only"
       description: "Block writes and deletes through this folder"
@@ -385,15 +424,17 @@ Column {
       fontFamily: card.fontFamily
       enabled: !card.service.busy
       hasCursor: card.host.isHot("detail", card.drive.id, "readOnly")
+      onHasCursorChanged: if (hasCursor) card.host.reveal(readOnlyToggle)
       onHovered: function (on) { if (on) card.host.claim("detail", card.drive.id, "readOnly") }
       onClicked: card.service.set(card.drive.id, "read-only", String(!card.drive.settings.readOnly))
     }
 
-    PanelSectionHeader {
-      text: "MAINTENANCE"
-      foreground: card.fg
-      fontFamily: card.fontFamily
     }
+
+    Column {
+      width: parent.width
+      spacing: Style.space(4)
+      visible: card.host.detailTab === "maintenance"
 
     DetailLine {
       visible: card.drive.mounted
@@ -434,6 +475,10 @@ Column {
         onHovered: function (on) { if (on) card.host.claim("detail", card.drive.id, "clearCache") }
         onClicked: card.service.clearCache(card.drive.id)
       }
+    }
+    }
+      }
+    }
     }
   }
 

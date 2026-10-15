@@ -11,7 +11,7 @@ StartDrive is an Omarchy shell plugin. Omarchy runs plugins unsandboxed, with yo
 | `systemd/startdrive@.service` | A systemd **user** unit per drive, running `rclone mount` | Your user |
 | `rclone`, `fuse3` | Installed on the first Connect with `omarchy pkg add` | **sudo**, once, through Omarchy's package helper. This is the only privileged step. |
 
-Nothing else is installed, downloaded or built. There is no network access of its own: the only network traffic is rclone's, to Google, Microsoft or Apple. There is no telemetry.
+Nothing else is installed, downloaded or built. There is no network access of its own: the only network traffic is rclone's, to the services you connect (Google, Microsoft, Dropbox, or any remote you add). There is no telemetry.
 
 ## Dependencies
 
@@ -19,9 +19,8 @@ Nothing else is installed, downloaded or built. There is no network access of it
 
 ## Secrets
 
-- **The rclone config is encrypted.** It holds OAuth refresh tokens and, for iCloud, the session and trust token. Its password is 256 random bits stored only in the login keyring (`secret-tool`, item `service=omarchy-cloud-drives key=config-password`; the item keeps its original name so existing configs stay readable). rclone reads it through `RCLONE_PASSWORD_COMMAND`. It is never written to disk in the clear and never placed in an environment variable.
-- **Google and OneDrive** sign in with OAuth in your browser. The plugin never sees the password. Tokens can be revoked from your Google or Microsoft security page.
-- **iCloud** has no OAuth. rclone needs the Apple ID password once (stored obscured inside the encrypted config) and a 2FA code. The password is handed to rclone over a private unix socket (`rclone rcd`, in a `0700` directory on tmpfs, for the length of the sign-in), with the request body built from stdin, so neither the clear nor the obscured value appears in a command line, the environment, a log or a temporary file. Prefer an app-specific password. Advanced Data Protection must be off for that Apple ID.
+- **The rclone config is encrypted.** It holds OAuth refresh tokens. Its password is 256 random bits stored only in the login keyring (`secret-tool`, item `service=omarchy-cloud-drives key=config-password`; the item keeps its original name so existing configs stay readable). rclone reads it through `RCLONE_PASSWORD_COMMAND`. It is never written to disk in the clear and never placed in an environment variable.
+- **Google Drive, OneDrive and Dropbox** sign in with OAuth in your browser. The plugin never sees the password. Tokens can be revoked from your Google or Microsoft security page.
 
 ## Mounts
 
@@ -32,7 +31,7 @@ Nothing else is installed, downloaded or built. There is no network access of it
 
 ## Input handling
 
-- A drive is one of a fixed list (`google`, `onedrive`, `icloud`). Anything else is rejected before any path or unit name is built.
+- A drive is one of a fixed list (`google`, `onedrive`, `dropbox`), or `r-<name>` for a remote you added with `startdrive add`. A name is accepted only if it matches `^[A-Za-z0-9][A-Za-z0-9_-]{0,31}$` and exists in your rclone config; anything else is rejected before any path or unit name is built.
 - Settings are validated against an allow-list of shapes (`^[1-9][0-9]{0,3}[MG]$` and so on) before they are written into the file systemd reads, so a value cannot add a variable or a line.
 - `startdrive launch` only runs `connect` and `disconnect`, so the panel cannot be made to run another command in a terminal.
 - File names shown in the panel come from the cloud. They are rendered as plain text, never as rich text, and are length-limited.

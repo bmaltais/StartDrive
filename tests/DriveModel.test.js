@@ -5,7 +5,7 @@ const path = require("node:path")
 
 // DriveModel.js is a QML library; load it as a plain script.
 const source = fs.readFileSync(path.join(__dirname, "..", "DriveModel.js"), "utf8").replace(/^\.pragma.*$/m, "")
-const M = new Function(source + "\nreturn { formatBytes, formatSpeed, usageText, usageFraction, driveStatus, summarize, headline, rowControls, primaryControl, detailItems, navStops, stepOption, tildePath, GLYPH, CACHE_SIZES }")()
+const M = new Function(source + "\nreturn { formatBytes, formatSpeed, usageText, usageFraction, driveStatus, summarize, headline, rowControls, primaryControl, detailItems, navStops, DETAIL_TABS, stepOption, tildePath, GLYPH, CACHE_SIZES }")()
 
 const drive = (over) => Object.assign({ id: "google", configured: true, mounted: true, unit: "active" }, over)
 
@@ -37,7 +37,7 @@ test("a drive's status line", () => {
 })
 
 test("summary and bar glyph", () => {
-  const drives = [drive(), drive({ id: "onedrive" }), drive({ id: "icloud", configured: false, mounted: false })]
+  const drives = [drive(), drive({ id: "onedrive" }), drive({ id: "dropbox", configured: false, mounted: false })]
   const idle = M.summarize(drives, {})
   assert.deepStrictEqual([idle.connected, idle.mounted, idle.pending], [2, 2, 0])
   assert.strictEqual(idle.glyph, M.GLYPH.mounted)
@@ -60,15 +60,20 @@ test("row controls", () => {
 })
 
 test("cursor stops include only the expanded drive's details", () => {
-  const drives = [drive(), drive({ id: "onedrive", mounted: false }), drive({ id: "icloud", configured: false, mounted: false })]
+  const drives = [drive(), drive({ id: "onedrive", mounted: false }), drive({ id: "dropbox", configured: false, mounted: false })]
   assert.strictEqual(M.navStops(drives, "").length, 3)
-  const stops = M.navStops(drives, "onedrive")
+  const stops = M.navStops(drives, "onedrive", "maintenance")
   assert.deepStrictEqual(stops.map((s) => s.kind + ":" + s.id + (s.key ? ":" + s.key : "")), [
     "row:google", "row:onedrive",
-    "detail:onedrive:cacheSize", "detail:onedrive:cacheAge", "detail:onedrive:readOnly", "detail:onedrive:autostart", "detail:onedrive:clearCache",
-    "row:icloud"])
-  assert.ok(M.navStops(drives, "google").some((s) => s.key === "refresh"))
-  assert.strictEqual(M.navStops(drives, "icloud").length, 3, "an unconnected drive has no details")
+    "detail:onedrive:tabs", "detail:onedrive:clearCache",
+    "row:dropbox"])
+  assert.ok(M.navStops(drives, "google", "maintenance").some((s) => s.key === "refresh"))
+  assert.strictEqual(M.navStops(drives, "dropbox", "cache").length, 3, "an unconnected drive has no details")
+})
+
+test("each tab has its own cursor stops", () => {
+  assert.deepStrictEqual(M.detailItems(drive(), "cache"), ["tabs", "cacheSize", "cacheAge"])
+  assert.deepStrictEqual(M.detailItems(drive(), "behaviour"), ["tabs", "autostart", "readOnly"])
 })
 
 test("stepOption stops at the ends and tolerates unknown values", () => {
