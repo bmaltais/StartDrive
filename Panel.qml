@@ -22,6 +22,7 @@ Panel {
   readonly property color dim: Qt.darker(foreground, 1.4)
   readonly property string fontFamily: bar ? bar.fontFamily : Style.font.family
   property string expandedId: ""
+  property string detailTab: "cache"
 
   // ---- keyboard cursor ----------------------------------------------------
   // One flat list of stops (Model.navStops): each drive's row, then the
@@ -30,7 +31,7 @@ Panel {
   property bool cursorActive: false
   property int navIndex: 0
   property var controlCursor: ({})
-  readonly property var stops: Model.navStops(service.drives, expandedId)
+  readonly property var stops: Model.navStops(service.drives, expandedId, detailTab)
   readonly property var stop: stops.length ? stops[Math.min(navIndex, stops.length - 1)] : null
 
   readonly property Item flick: panel.loadedContent ? panel.loadedContent.flick : null
@@ -75,6 +76,8 @@ Panel {
     if (stop.kind === "row") {
       var controls = controlsOf(stop.id)
       setControlIndex(stop.id, Math.max(0, Math.min(controls.length - 1, controlIndex(stop.id) + dx)))
+    } else if (stop.key === "tabs") {
+      detailTab = Model.stepOption(Model.DETAIL_TABS, detailTab, dx)
     } else if (stop.key === "cacheSize") {
       var d = service.drive(stop.id)
       service.set(stop.id, "cache-size", Model.stepOption(Model.CACHE_SIZES, d.settings.cacheSize, dx))
@@ -206,6 +209,7 @@ Panel {
         var key = String(t).toLowerCase()
         var d = root.stop ? service.drive(root.stop.id) : null
         if (key === "r") { service.refresh(); service.refreshActivity(); service.refreshUsage() }
+        else if (key === "n") { service.addRemote(); root.close() }
         else if (key === "a") { if (service.summary.mounted === service.summary.connected) service.unmountAll(); else service.mountAll() }
         else if (!d) return
         else if (key === "m") root.perform(d.configured ? "toggle" : "connect", d)
@@ -226,7 +230,6 @@ Panel {
             id: hero
             width: parent.width
             title: "StartDrive"
-            detail: service.summary.connected ? service.summary.mounted + "/" + service.summary.connected : ""
             meta: Model.headline(service.summary, service.secure, service.rcloneInstalled)
             foreground: root.foreground
             fontFamily: root.fontFamily
@@ -288,30 +291,6 @@ Panel {
                 anchors.verticalCenter: parent.verticalCenter
               }
 
-              // The mount root, as a link to the folder.
-              Text {
-                textFormat: Text.PlainText
-                text: Model.tildePath(service.mountRoot) + "  󰉋"
-                color: rootMouse.containsMouse ? root.foreground : root.dim
-                font.family: root.fontFamily
-                font.pixelSize: Style.font.caption
-                anchors.right: parent.right
-                anchors.rightMargin: Style.space(6)
-                anchors.verticalCenter: parent.verticalCenter
-
-                MouseArea {
-                  id: rootMouse
-                  anchors.fill: parent
-                  hoverEnabled: true
-                  cursorShape: Qt.PointingHandCursor
-                  onClicked: { service.openRoot(); root.close() }
-                }
-                PanelToolTip {
-                  visible: rootMouse.containsMouse
-                  text: "Open " + Model.tildePath(service.mountRoot)
-                  fontFamily: root.fontFamily
-                }
-              }
             }
       }
 
@@ -360,15 +339,19 @@ Panel {
               }
             }
 
-          Text {
-            textFormat: Text.PlainText
-            width: parent.width
-            wrapMode: Text.WordWrap
-            text: "Sign in with your browser (Google, Microsoft) or Apple ID + 2FA (iCloud). Credentials stay in an rclone config encrypted with a key held only in your login keyring."
-            color: root.dim
-            font.family: root.fontFamily
-            font.pixelSize: Style.font.caption
-          }
+            // Any other rclone backend, through rclone's own questionnaire.
+            Button {
+              text: "Add remote…"
+              iconText: "󰐕"
+              fontSize: Style.font.caption
+              foreground: root.foreground
+              fontFamily: root.fontFamily
+              horizontalPadding: Style.spacing.md
+              verticalPadding: Style.spacing.controlPaddingY
+              bordered: true
+              enabled: !service.busy
+              onClicked: { service.addRemote(); root.close() }
+            }
         }
       }
     }

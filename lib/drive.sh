@@ -122,11 +122,11 @@ cmd_open() {
 cmd_launch() {
   local command="${1:-}" id="${2:-}"
   case "$command" in
-    connect | disconnect) ;;
+    connect | disconnect) remote_of "$id" >/dev/null ;;
+    add) id="" ;;
     *) fail "launch: '$command' is not an interactive command" ;;
   esac
-  remote_of "$id" >/dev/null
-  exec omarchy-launch-floating-terminal-with-presentation "$(printf '%q ' "$SD_HOME/bin/startdrive" "$command" "$id")"
+  exec omarchy-launch-floating-terminal-with-presentation "$(printf '%q ' "$SD_HOME/bin/startdrive" "$command" ${id:+"$id"})"
 }
 
 cmd_disconnect() {

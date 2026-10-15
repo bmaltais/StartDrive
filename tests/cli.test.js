@@ -17,9 +17,16 @@ test("help lists the commands", () => {
 test("an unknown command is refused", () => assert.strictEqual(run("nonsense").status, 2))
 
 test("an unknown drive is refused", () => {
-  const r = run("mount", "dropbox")
-  assert.notStrictEqual(r.status, 0)
-  assert.match(r.stderr, /unknown drive/)
+  for (const id of ["box", "r-", "r-../etc", "r-a b", "r-nothere", "r-$(id)", "--help"]) {
+    const r = run("mount", id)
+    assert.notStrictEqual(r.status, 0, id)
+    assert.match(r.stderr, /unknown drive/, id)
+  }
+})
+
+test("launch accepts add, and nothing else new", () => {
+  const r = run("launch", "bogus")
+  assert.match(r.stderr, /not an interactive command/)
 })
 
 test("settings accept only the allow-listed shapes", () => {

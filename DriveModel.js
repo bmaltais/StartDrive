@@ -133,19 +133,29 @@ function clickControl(drive) {
   return drive.mounted ? "open" : "toggle"
 }
 
-function detailItems(drive) {
-  var items = ["cacheSize", "cacheAge", "readOnly", "autostart"]
-  if (drive.mounted) items.push("refresh")
-  items.push("clearCache")
+var DETAIL_TABS = [
+  { value: "cache", label: "Cache" },
+  { value: "behaviour", label: "Behaviour" },
+  { value: "maintenance", label: "Maintenance" }
+]
+
+// The cursor stops of an expanded drive: its tab bar, then the open tab's items.
+function detailItems(drive, tab) {
+  var items = ["tabs"]
+  if (tab === "behaviour") items.push("autostart", "readOnly")
+  else if (tab === "maintenance") {
+    if (drive.mounted) items.push("refresh")
+    items.push("clearCache")
+  } else items.push("cacheSize", "cacheAge")
   return items
 }
 
-function navStops(drives, expandedId) {
+function navStops(drives, expandedId, tab) {
   var stops = []
   for (var i = 0; i < drives.length; i++) {
     stops.push({ kind: "row", id: drives[i].id })
     if (drives[i].configured && drives[i].id === expandedId) {
-      var items = detailItems(drives[i])
+      var items = detailItems(drives[i], tab)
       for (var j = 0; j < items.length; j++) stops.push({ kind: "detail", id: drives[i].id, key: items[j] })
     }
   }

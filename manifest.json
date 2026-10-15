@@ -5,7 +5,7 @@
   "version": "0.2.0",
   "author": "Bernard Maltais",
   "license": "MIT",
-  "description": "Cloud drives as folders from the Omarchy bar: Google Drive, OneDrive and iCloud Drive through rclone, with live upload activity, cache controls and per-drive settings.",
+  "description": "Cloud drives as folders from the Omarchy bar: Google Drive, OneDrive, Dropbox and any other rclone backend, with live upload activity, cache controls and per-drive settings.",
   "kinds": ["bar-widget"],
   "activation": "on-demand",
   "entryPoints": {
@@ -13,9 +13,9 @@
   },
   "barWidget": {
     "displayName": "StartDrive",
-    "description": "Mount and manage Google Drive, OneDrive and iCloud Drive.",
+    "description": "Mount and manage Google Drive, OneDrive, Dropbox and more.",
     "category": "System",
-    "aliases": ["cloud", "drive", "icloud", "google-drive", "onedrive", "rclone"],
+    "aliases": ["cloud", "drive", "google-drive", "onedrive", "rclone"],
     "allowMultiple": false,
     "defaultSection": "right",
     "defaults": {},
