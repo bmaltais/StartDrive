@@ -27,7 +27,7 @@ Single-context: one `GLOSSARY.md` and `docs/adr/` at the repo root. See `docs/ag
 
 ## Recorder
 
-`docs/recording-tours.md` before changing `scripts/tour.sh`, `scripts/tours/`, `scripts/tour-banner.qml` or `scripts/nested/`. `scripts/screenshots.sh` and `scripts/preview.sh` retake the README images.
+`docs/recording-tours.md` before changing `scripts/tours/` or `devkit.conf`. The session and recorder themselves are the shared devkit's (`scripts/devkit`, a git subtree of `bmaltais/omarchy-plugin-devkit`): fix a bug there, in that repository, and `git subtree pull`; do not edit the copy here. `scripts/screenshots.sh` and `scripts/preview.sh` retake the README images.
 
 ## Omarchy plugin loading
 
