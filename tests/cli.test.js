@@ -87,3 +87,28 @@ test("settings are written whole and read back as the panel's JSON", () => {
     fs.rmSync(dir, { recursive: true, force: true })
   }
 })
+
+// File names from the mount must never travel as command-line arguments, which
+// every user on the machine can read in `ps`.
+test("drive_activity keeps cloud file names out of process arguments", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "startdrive-"))
+  try {
+    const log = path.join(dir, "jq-args")
+    const real = spawnSync("sh", ["-c", "command -v jq"], { encoding: "utf8" }).stdout.trim()
+    fs.writeFileSync(path.join(dir, "jq"), `#!/bin/sh\nprintf '%s\\n' "$@" >> '${log}'\nexec '${real}' "$@"\n`, { mode: 0o755 })
+    const script = `source lib/common.sh; source lib/rc.sh
+      mount_rc() { case "$2" in
+        vfs/queue) echo '{"queue":[{"name":"secret-tax-return.pdf","uploading":true}]}' ;;
+        *) echo '{"transferring":[{"name":"secret-tax-return.pdf","size":1,"bytes":0}]}' ;; esac; }
+      drive_activity google`
+    const r = spawnSync("bash", ["-c", script], {
+      cwd: root, encoding: "utf8", env: { ...process.env, PATH: `${dir}:${process.env.PATH}` },
+    })
+    assert.strictEqual(r.status, 0, r.stderr)
+    assert.strictEqual(JSON.parse(r.stdout).transfers[0].name, "secret-tax-return.pdf")
+    assert.ok(fs.existsSync(log), "the jq shim was not used")
+    assert.ok(!fs.readFileSync(log, "utf8").includes("secret-tax-return"))
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true })
+  }
+})

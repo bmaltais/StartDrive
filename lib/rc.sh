@@ -24,8 +24,11 @@ drive_activity() {
   local id="$1" queue core
   queue="$(RC_TIMEOUT=3 mount_rc "$id" vfs/queue)" || return 1
   core="$(RC_TIMEOUT=3 mount_rc "$id" core/stats)" || return 1
-  jq -nc --arg id "$id" --argjson queue "$queue" --argjson core "$core" '
-    ($queue.queue // []) as $q
+  # The replies hold the names of your cloud files, so they go in on stdin: an
+  # argument would show up in `ps` for every other user on the machine.
+  { printf '%s\n' "$queue"; printf '%s\n' "$core"; } | jq -sc --arg id "$id" '
+    .[0] as $queue | .[1] as $core
+    | ($queue.queue // []) as $q
     | {
         id: $id,
         uploading: ([$q[] | select(.uploading)] | length),
