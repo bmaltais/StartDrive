@@ -6,6 +6,7 @@ How to record a short animation that shows an app being used, with `scripts/tour
 - [What you need](#what-you-need)
 - [What happens when you run it](#what-happens-when-you-run-it)
 - [Writing a tour for an app](#writing-a-tour-for-an-app)
+- [Clips of one window](#clips-of-one-window)
 - [Reference](#reference)
 - [How it works inside](#how-it-works-inside)
 - [Troubleshooting](#troubleshooting)
@@ -92,6 +93,15 @@ Give each caption enough time to be read (about 3 seconds for a short one), and 
 
 The tour runs in a sandbox, so what it changes is thrown away. Anything it must not touch is listed in `TOUR_REAL_UNCHANGED` (paths under your real `$HOME`): the recorder fingerprints them before and after and fails the run if one changed. For data the tour changes, list it in `TOUR_SANDBOX_COPY` so the sandbox has its own copy. The StartDrive tour, for example, resets the windows' saved size and place, makes one app look a version behind, and switches the bar icon off and on, all in the sandbox's copy.
 
+## Clips of one window
+
+A tour with `TOUR_CROP=WxH+X+Y` keeps only that box of the session's screen, so a short tour of one window can stand in for a still image. `scripts/tours/settings-clip.sh` is the example: the settings window cropped as `screenshots.sh` crops it (840x600 at 220,100), about 18 seconds, 48 KB as an AVIF.
+
+- **No captions**, or one: the crop is small. A clip is meant to be read as a picture.
+- **Loop it.** Open the window in `tour_setup` (before filming) and end `tour_play` on the page the clip began on, so the loop has no jump.
+- **Flat backdrop**: set `TOUR_BACKDROP=plain` and `TOUR_BG` in the tour file, as the stills have.
+- Run it like any tour: `scripts/tour.sh scripts/tours/settings-clip.sh [--install]`. Each run starts its own session (about two minutes of set-up), so a clip costs about as much as the hero tour.
+
 ## Reference
 
 ### Variables a tour file sets
@@ -103,6 +113,7 @@ The tour runs in a sandbox, so what it changes is thrown away. Anything it must 
 | `TOUR_LAYER` | The app window's layer-shell namespace; needed for `typed` and `esc` | none |
 | `TOUR_STEPS` | How many steps (`cap` calls), for "Step 2 of 6" | unknown |
 | `TOUR_SIZE` | The session's screen, `WxH` | `1280x800` |
+| `TOUR_CROP` | `WxH+X+Y`: keep only that box of the screen, for a clip of one window (see [Clips of one window](#clips-of-one-window)) | the whole screen |
 | `TOUR_BG` | With `TOUR_BACKDROP=plain`, the backdrop colour (default: the theme's wallpaper) | `#262a36` |
 | `TOUR_PLUGIN_ID` | **Required.** The plugin's id, to load in the sandbox | |
 | `TOUR_SANDBOX_COPY=(path …)` | Paths under `$HOME` to *copy* into the sandbox: the data the tour changes (e.g. `.local/share/myapp`; StartDrive's tour copies nothing, since it runs on fixture drives) | none |
@@ -110,7 +121,7 @@ The tour runs in a sandbox, so what it changes is thrown away. Anything it must 
 | `TOUR_REAL_UNCHANGED=(path …)` | Paths under your real `$HOME` that must not change: fingerprinted (name, size, mtime) before and after; a difference fails the run (exit 1) and keeps nothing | none |
 | `TOUR_MAX_SECONDS` | Stop a tour that runs longer than this, as a stuck step would | `300` |
 | `TOUR_FONT` | The caption font file | JetBrains Mono Nerd Font Bold |
-| `TOUR_GIF_WIDTH` | The width in pixels of the result, whichever format (10 frames a second) | `1000` |
+| `TOUR_GIF_WIDTH` | The width in pixels of the result, whichever format (10 frames a second) | `1000`, or the width of `TOUR_CROP` if smaller |
 | `TOUR_AVIF_CRF` | AVIF quality, lower is sharper and bigger: 24 is 0.9 MB, 32 is 0.6 MB, 40 is 0.4 MB for the StartDrive tour | `40` |
 | `TOUR_GIF_COLORS` | For a `.gif` result: its palette size. 64 posterizes a photo wallpaper; 256 is smoother but about 1.2 MB bigger | `128` |
 

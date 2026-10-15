@@ -27,6 +27,8 @@
 #                        it is up in the session, so they never reach anything else           (required to use typed/esc)
 #     TOUR_STEPS         how many steps (calls to `cap`) it has, for "Step 2 of 6"   (optional)
 #     TOUR_SIZE          the session's screen, WxH         (default 1280x800)
+#     TOUR_CROP          WxH+X+Y: keep only this box of the screen, for a short clip of one window (default: the whole
+#                        screen). Captions are drawn in the box; the result is as wide as the box unless TOUR_GIF_WIDTH says
 #     TOUR_BG            with TOUR_BACKDROP=plain, the backdrop colour  (default #262a36)
 #     TOUR_REAL_UNCHANGED  paths under your real $HOME (files or folders) that the tour must not touch. They are
 #                        fingerprinted (name, size, modification time) before and after, and the run fails, keeping nothing, if
@@ -68,6 +70,7 @@ source "$tourfile"
 : "${TOUR_TITLE:?the tour file must set TOUR_TITLE}"
 : "${TOUR_OUT:=screenshots/hero.avif}"
 : "${TOUR_SIZE:=1280x800}"
+: "${TOUR_CROP:=}"
 : "${TOUR_BG:=#262a36}"
 : "${TOUR_LAYER:=}"
 : "${TOUR_RESTART_SHELL:=0}"
@@ -79,6 +82,14 @@ declare -F tour_play >/dev/null || { echo "tour: the tour file must define tour_
 
 W=${TOUR_SIZE%x*}
 H=${TOUR_SIZE#*x}
+crop_vf=""
+if [[ -n $TOUR_CROP ]]; then
+  [[ $TOUR_CROP =~ ^([0-9]+)x([0-9]+)\+([0-9]+)\+([0-9]+)$ ]] || { echo "tour: TOUR_CROP must look like WxH+X+Y, not $TOUR_CROP" >&2; exit 2; }
+  crop_w=${BASH_REMATCH[1]}; crop_h=${BASH_REMATCH[2]}
+  (( BASH_REMATCH[3] + crop_w <= W && BASH_REMATCH[4] + crop_h <= H )) || { echo "tour: TOUR_CROP $TOUR_CROP does not fit the ${W}x${H} screen" >&2; exit 2; }
+  # Even sides, as yuv420p needs.
+  crop_vf="crop=$((crop_w / 2 * 2)):$((crop_h / 2 * 2)):${BASH_REMATCH[3]}:${BASH_REMATCH[4]},"
+fi
 for tool in hyprctl jq grim ffmpeg ffprobe magick quickshell notify-send; do
   command -v "$tool" >/dev/null || { echo "tour: $tool is needed" >&2; exit 1; }
 done
@@ -453,17 +464,17 @@ printf '%s' "$vf" >"$TMP/vf.txt"
 # default for the README; browsers show it in an <img>, and GitHub serves it as image/avif.
 #   AVIF: TOUR_AVIF_CRF sets the quality (lower is sharper and bigger; 40 by default, 32 is crisper, 24 sharper still)
 #   GIF:  TOUR_GIF_COLORS sets the palette (128 by default)
-#   both: TOUR_GIF_WIDTH sets the width in pixels (1000 by default)
-width=${TOUR_GIF_WIDTH:-1000}
+#   both: TOUR_GIF_WIDTH sets the width in pixels (1000 by default, or the width of TOUR_CROP when that is smaller)
+width=${TOUR_GIF_WIDTH:-$(( ${crop_w:-1000} > 1000 ? 1000 : ${crop_w:-1000} ))}
 case ${TOUR_OUT##*.} in
   avif)
     ffmpeg -hide_banner -encoders 2>/dev/null | grep -q libaom-av1 || { echo "tour: ffmpeg has no libaom-av1 encoder, which an .avif needs" >&2; exit 1; }
     ffmpeg -loglevel error -y -ss 0.4 -i "$TMP/tour.mp4" \
-      -vf "${vf}fps=10,scale=${width}:-1:flags=lanczos,format=yuv420p" \
+      -vf "${crop_vf}${vf}fps=10,scale=${width}:-1:flags=lanczos,format=yuv420p" \
       -c:v libaom-av1 -crf "${TOUR_AVIF_CRF:-40}" -b:v 0 -cpu-used 6 -f avif "$TMP/result" ;;
   *)
     ffmpeg -loglevel error -y -ss 0.4 -i "$TMP/tour.mp4" \
-      -vf "${vf}fps=10,scale=${width}:-1:flags=lanczos,split[a][b];[a]palettegen=max_colors=${TOUR_GIF_COLORS:-128}:stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=5:diff_mode=rectangle" \
+      -vf "${crop_vf}${vf}fps=10,scale=${width}:-1:flags=lanczos,split[a][b];[a]palettegen=max_colors=${TOUR_GIF_COLORS:-128}:stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=5:diff_mode=rectangle" \
       -loop 0 -f gif "$TMP/result" ;;
 esac
 echo "tour: ${TOUR_OUT##*.} $(du -h "$TMP/result" | cut -f1)"

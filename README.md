@@ -60,18 +60,7 @@ An optional cloud on the Omarchy bar, on by default, that opens the manager. It 
 
 ### A drive's settings
 
-<table>
-  <tr>
-    <th>Behaviour</th>
-    <th>Cache</th>
-    <th>Maintenance</th>
-  </tr>
-  <tr valign="top">
-    <td><img src="screenshots/settings-behaviour.png" alt="A drive's settings, Behaviour page: mount at login, read-only and notifications"></td>
-    <td><img src="screenshots/settings-cache.png" alt="The Cache page: cache limit and how long files are kept"></td>
-    <td><img src="screenshots/settings-maintenance.png" alt="The Maintenance page: refresh listing and clear cache"></td>
-  </tr>
-</table>
+<img src="screenshots/settings-clip.avif" alt="A drive's settings: the Behaviour, Cache and Maintenance pages, with a switch flipped and a cache size picked" width="640">
 
 The cog opens a drive's settings, in four pages: **Behaviour**, **Cache**, **Maintenance** and **Account** (forget the drive, or give Google Drive its own key). Search them from the box at the top.
 
