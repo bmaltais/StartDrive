@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+export DEVKIT_APP_ROOT=$here
+exec "$here/../../bin/tour" "$@"

@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+# Project rules for scripts that drive a nested session, each one a mistake that cost a session. Run it on an app's checkout (or this one).
+#
+#   lint [ROOT]         ROOT is the folder to check (default: the checkout it is run in)
+#
+# detached  A background launch (`setsid -f`) must redirect its own output (`2>&1` on the launch). One that keeps the caller's stdout
+#           open makes `dev up | tail` wait until the background process ends (up to 30 minutes), so the next command never runs and a
+#           ready session sits unused.
+# sandbox   A TOUR_SANDBOX_COPY or TOUR_SANDBOX_LINK must not name the real shell.json: the sandbox has its own, and a copy or a link of
+#           the real one would let the session write to it.
+set -uo pipefail
+root=$(cd "${1:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}" && pwd) || exit 2
+cd "$root" || exit 2
+self=$(readlink -f "${BASH_SOURCE[0]}")
+fail=0
+
+# The shell scripts of the tree that hold the word: not in .git, node_modules or vendor, tests, or this script, and a shebang for a shell, a
+# .sh name or a shellcheck directive says it is one.
+files() {
+  local f
+  while read -r f; do
+    [[ $(readlink -f "$f") == "$self" ]] && continue
+    # Tests write fixtures (scripts holding a mistake on purpose), over several lines and quoting styles; they are not launches.
+    [[ $f == ./tests/* || $f == */tests/* ]] && continue
+    if [[ $f == *.sh ]] || head -n2 "$f" | grep -qE '^#!.*(bash|/sh)|shellcheck shell='; then echo "$f"; fi
+  done < <(grep -rlI --exclude-dir=.git --exclude-dir=node_modules --exclude-dir=vendor -e "$1" . 2>/dev/null | sort)
+}
+
+# A launch can span lines (a trailing backslash), so each logical line is joined first.
+detached() {
+  local f hits
+  while read -r f; do
+    # Quoted text is not a launch (a test that writes a script holding one), so the launch is looked for outside quoted strings; the
+    # redirect may be inside them (the inner command of a `sh -c '... 2>&1'`), so it is looked for in the whole logical line.
+    hits=$(perl -0pe 's/\\\n\s*//g' "$f" | perl -ne 'chomp; $o = $_; s/\x27[^\x27]*\x27//g; s/"[^"]*"//g; print "$.:$o\n" if /setsid -f/ && $o !~ /2>&1/ && $o !~ /^\s*#/' | cut -c1-140 || true)
+    [[ -z $hits ]] || { echo "$f: setsid -f without 2>&1 (its output keeps the caller's pipe open):"; printf '    %s\n' "${hits//$'\n'/$'\n    '}"; return 1; }
+  done < <(files 'setsid -f')
+}
+
+sandbox() {
+  local f hits out=""
+  while read -r f; do
+    hits=$(sed 's/ *#.*//' "$f" | grep -nE '^(TOUR_SANDBOX_(COPY|LINK))=.*shell\.json' || true)
+    [[ -z $hits ]] || out+="$f: ${hits//$'\n'/; }"$'\n'
+  done < <(files 'TOUR_SANDBOX_')
+  [[ -z $out ]] || { echo "a sandbox copy or link names the real shell.json (the session writes its own):"; printf '    %s' "$out"; return 1; }
+}
+
+for rule in detached sandbox; do
+  out=$($rule 2>&1) || { printf '%s\n' "$out"; fail=1; }
+done
+((fail == 0)) && echo "lint: ok"
+exit $fail

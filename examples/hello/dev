@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# This app's `dev`: the devkit's, run for this checkout. In a real app the devkit lives in a folder of the repo (scripts/devkit) and
+# this line points at it; here it is two folders up.
+here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+export DEVKIT_APP_ROOT=$here
+exec "$here/../../bin/dev" "$@"

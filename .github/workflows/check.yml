@@ -1,0 +1,17 @@
+name: Check
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get install -y shellcheck jq perl
+      # No Hyprland here: these are the checks that need none (the guard, the config loader, the lint rules, shellcheck).
+      - run: shellcheck -x -s bash bin/* lib/*.sh tests/*.sh examples/hello/dev examples/hello/tour examples/hello/tours/*.sh examples/hello/devkit.conf
+      - run: bin/lint .
+      - run: tests/run.sh
