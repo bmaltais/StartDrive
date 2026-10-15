@@ -14,8 +14,8 @@ jobs:
         with:
           node-version: 22
       - run: sudo apt-get install -y shellcheck jq
-      # `omarchy plugin validate` needs Omarchy, which this runner doesn't
-      # have; tests/manifest.test.js repeats its checks and the pre-commit
-      # hook runs the real validator.
-      - run: npm test
+      # The QML and manifest checks in scripts/check.sh need Qt and Omarchy, which this runner does not have;
+      # they run in the pre-commit hook. tests/manifest.test.js repeats the marketplace's rules for CI.
       - run: scripts/lint-sh.sh
+      - run: tests/cli.sh
+      - run: npm test

@@ -81,7 +81,7 @@ migrate_legacy() {
   echo "Moved ${#running[@]} mount(s) to the StartDrive unit."
 }
 
-cmd_setup() {
+cmd_prepare() {
   ensure_rclone
   ensure_secret
   ensure_encrypted
@@ -100,9 +100,14 @@ cmd_uninstall() {
     rm -f -- "$(settings_file "$id")"
   done
   rm -f -- "$UNIT_DIR/${UNIT_TEMPLATE}.service" "$ENV_FILE"
+  # What the app's own settings put on the machine: the launcher entry, the command-line link (only ours), the preferences.
+  launcher_off
+  cli_off
+  rm -f -- "$PREFS_FILE" "${XDG_CACHE_HOME:-$HOME/.cache}/startdrive/status"
+  rmdir -- "${XDG_CACHE_HOME:-$HOME/.cache}/startdrive" 2>/dev/null || true
   rmdir -- "$CONFIG_DIR" 2>/dev/null || true
   systemctl --user daemon-reload
-  echo "Mount units and settings removed. Forget the drives first if you also want their accounts removed."
+  echo "Mount units, settings, launcher entry and command-line link removed. Forget the drives first if you also want their accounts removed."
   if [[ $purge == --purge ]]; then
     gum confirm "Delete the config key from the keyring? The rclone config becomes unreadable." || exit 130
     secret-tool clear "${SECRET_ATTRS[@]}"

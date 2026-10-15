@@ -1,38 +1,33 @@
-// A scroll bar for a Flickable, drawn like StartBar's settings window: a thin
-// track down the right edge and a thumb as long as the visible share, there
-// only while the content is taller than the view, so a panel that scrolls is
-// seen to. Drag the thumb or click the track; the wheel scrolls the flickable.
-
+// A thin scroll bar for a list, drawn like the rest of the Start family: a soft track,
+// a rounded thumb that brightens on hover, drag the thumb or click the track.
+// It only shows when the list is taller than the window; the wheel scrolls the list itself.
 import QtQuick
 import qs.Commons
+import qs.Ui
 
 Item {
-  id: track
+  id: bar
 
-  required property Flickable flick
-  property color foreground: Color.foreground
+  property Flickable target
 
-  // The room the panel keeps free beside the content, always, so content does
-  // not shift sideways when the bar appears.
-  readonly property int gutter: Style.spacing.lg
-  readonly property real extent: flick.contentHeight - flick.height
+  readonly property real extent: bar.target ? bar.target.contentHeight - bar.target.height : 0
 
-  visible: extent > 1
-  width: Style.spacing.md
+  visible: bar.extent > 1
+  implicitWidth: Style.spacing.md
 
   Rectangle {
     anchors.fill: parent
     radius: width / 2
-    color: Util.alpha(track.foreground, 0.08)
+    color: Util.alpha(Color.foreground, 0.08)
   }
 
   Rectangle {
     id: thumb
     width: parent.width
     radius: width / 2
-    height: Math.min(parent.height, Math.max(Style.space(28), parent.height * track.flick.height / Math.max(1, track.flick.contentHeight)))
-    y: track.extent > 0 ? (parent.height - height) * track.flick.contentY / track.extent : 0
-    color: Util.alpha(track.foreground, mouse.pressed ? 0.55 : (mouse.containsMouse ? 0.4 : 0.28))
+    height: bar.target ? Math.min(parent.height, Math.max(Style.space(28), parent.height * bar.target.height / bar.target.contentHeight)) : 0
+    y: bar.extent > 0 ? (parent.height - height) * bar.target.contentY / bar.extent : 0
+    color: Util.alpha(Color.foreground, mouse.pressed ? 0.55 : (mouse.containsMouse ? 0.4 : 0.28))
   }
 
   MouseArea {
@@ -45,12 +40,12 @@ Item {
     cursorShape: Qt.PointingHandCursor
 
     function scrollTo(pointerY) {
-      var room = track.height - thumb.height
+      var room = bar.height - thumb.height
       if (room <= 0) return
       var top = Math.max(0, Math.min(pointerY - thumb.height / 2, room))
-      track.flick.contentY = top / room * track.extent
+      bar.target.contentY = top / room * bar.extent
     }
-    onPressed: function (m) { scrollTo(m.y) }
-    onPositionChanged: function (m) { if (pressed) scrollTo(m.y) }
+    onPressed: function (m) { mouse.scrollTo(m.y) }
+    onPositionChanged: function (m) { if (mouse.pressed) mouse.scrollTo(m.y) }
   }
 }

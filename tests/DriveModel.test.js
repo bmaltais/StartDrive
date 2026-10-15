@@ -5,7 +5,7 @@ const path = require("node:path")
 
 // DriveModel.js is a QML library; load it as a plain script.
 const source = fs.readFileSync(path.join(__dirname, "..", "DriveModel.js"), "utf8").replace(/^\.pragma.*$/m, "")
-const M = new Function(source + "\nreturn { formatBytes, formatSpeed, usageText, usageFraction, driveStatus, summarize, headline, rowControls, primaryControl, detailItems, navStops, DETAIL_TABS, stepOption, tildePath, GLYPH, CACHE_SIZES, CACHE_AGES, SETTINGS, DETAIL_SETTING, settingValue, withSetting, flipped, stepped, controlAction, detailAction, stepAction, alerts }")()
+const M = new Function(source + "\nreturn { formatBytes, formatSpeed, usageText, usageFraction, driveStatus, summarize, headline, GLYPH, CACHE_SIZES, CACHE_AGES, SETTINGS, FIELD_SETTING, withSetting, clickAction, toggleAction, keyAction, transferLine, settingsPages, settingsStartPage, alerts }")()
 
 const drive = (over) => Object.assign({ id: "google", configured: true, mounted: true, unit: "active" }, over)
 
@@ -41,109 +41,18 @@ test("summary and bar glyph", () => {
   const idle = M.summarize(drives, {})
   assert.deepStrictEqual([idle.connected, idle.mounted, idle.pending], [2, 2, 0])
   assert.strictEqual(idle.glyph, M.GLYPH.mounted)
+  assert.strictEqual(idle.kind, "mounted")
   const up = M.summarize(drives, { google: { uploading: 1, queued: 0, speed: 5, errored: 0 } })
   assert.strictEqual(up.glyph, M.GLYPH.uploading)
+  assert.strictEqual(up.kind, "uploading")
   assert.strictEqual(M.headline(up, true, true), "Uploading 1 file · 5 B/s")
   const bad = M.summarize(drives, { google: { uploading: 1, queued: 0, errored: 1 } })
   assert.strictEqual(bad.glyph, M.GLYPH.alert)
+  assert.strictEqual(bad.kind, "alert")
   assert.strictEqual(M.summarize([drive({ mounted: false })], {}).glyph, M.GLYPH.idle)
   assert.strictEqual(M.headline(idle, true, true), "All synced")
   assert.strictEqual(M.headline(idle, false, true), "Config not encrypted")
   assert.strictEqual(M.headline(M.summarize([], {}), true, false), "Not set up · connect a drive to begin")
-})
-
-test("row controls", () => {
-  assert.deepStrictEqual(M.rowControls(drive({ configured: false, mounted: false })), ["connect"])
-  assert.deepStrictEqual(M.rowControls(drive()), ["open", "details", "disconnect", "toggle"])
-  assert.deepStrictEqual(M.rowControls(drive({ mounted: false })), ["details", "disconnect", "toggle"])
-  assert.strictEqual(M.primaryControl(drive()), "toggle")
-})
-
-test("cursor stops include only the expanded drive's details", () => {
-  const drives = [drive(), drive({ id: "onedrive", mounted: false }), drive({ id: "dropbox", configured: false, mounted: false })]
-  assert.strictEqual(M.navStops(drives, "").length, 3)
-  const stops = M.navStops(drives, "onedrive", "maintenance")
-  assert.deepStrictEqual(stops.map((s) => s.kind + ":" + s.id + (s.key ? ":" + s.key : "")), [
-    "row:google", "row:onedrive",
-    "detail:onedrive:tabs", "detail:onedrive:clearCache",
-    "row:dropbox"])
-  assert.ok(M.navStops(drives, "google", "maintenance").some((s) => s.key === "refresh"))
-  assert.strictEqual(M.navStops(drives, "dropbox", "cache").length, 3, "an unconnected drive has no details")
-})
-
-test("each tab has its own cursor stops", () => {
-  assert.deepStrictEqual(M.detailItems(drive(), "cache"), ["tabs", "cacheSize", "cacheAge"])
-  assert.deepStrictEqual(M.detailItems(drive(), "behaviour"), ["tabs", "autostart", "readOnly", "notifications"])
-})
-
-test("stepOption stops at the ends and tolerates unknown values", () => {
-  assert.strictEqual(M.stepOption(M.CACHE_SIZES, "4G", 1), "10G")
-  assert.strictEqual(M.stepOption(M.CACHE_SIZES, "50G", 1), "50G")
-  assert.strictEqual(M.stepOption(M.CACHE_SIZES, "1G", -1), "1G")
-  assert.strictEqual(M.stepOption(M.CACHE_SIZES, "7G", 1), "4G")
-})
-
-test("tildePath", () => assert.strictEqual(M.tildePath("/home/bernard/Cloud/X"), "~/Cloud/X"))
-
-test("settings read, change and step through their one table", () => {
-  const d = drive({ settings: { cacheSize: "4G", cacheAge: "72h", readOnly: false, autostart: true } })
-  assert.strictEqual(M.settingValue(d, "cache-size"), "4G")
-  assert.strictEqual(M.settingValue(d, "read-only"), "false")
-  assert.strictEqual(M.flipped(d, "read-only"), "true")
-  assert.strictEqual(M.flipped(d, "autostart"), "false")
-  assert.strictEqual(M.stepped(d, "cache-age", 1), "168h")
-  const next = M.withSetting(d, "read-only", "true")
-  assert.strictEqual(next.settings.readOnly, true)
-  assert.strictEqual(d.settings.readOnly, false, "the original is untouched")
-  assert.strictEqual(M.withSetting(d, "cache-size", "10G").settings.cacheSize, "10G")
-})
-
-test("every detail item that edits a setting names a real one", () => {
-  for (const setting of Object.values(M.DETAIL_SETTING)) assert.ok(M.SETTINGS[setting], setting)
-})
-
-test("a row button maps to one action", () => {
-  assert.deepStrictEqual(M.controlAction("toggle", drive()), { type: "unmount" })
-  assert.deepStrictEqual(M.controlAction("toggle", drive({ mounted: false, unit: "activating" })), { type: "unmount" })
-  assert.deepStrictEqual(M.controlAction("toggle", drive({ mounted: false, unit: "inactive" })), { type: "mount" })
-  assert.deepStrictEqual(M.controlAction("disconnect", drive()), { type: "interactive", command: "disconnect" })
-  assert.deepStrictEqual(M.controlAction("connect", drive()), { type: "interactive", command: "connect" })
-  assert.deepStrictEqual(M.controlAction("open", drive()), { type: "open" })
-  assert.deepStrictEqual(M.controlAction("details", drive()), { type: "details" })
-  assert.strictEqual(M.controlAction("nonsense", drive()), null)
-})
-
-test("every control the cursor can reach has an action", () => {
-  for (const d of [drive(), drive({ mounted: false }), drive({ configured: false, mounted: false })]) {
-    for (const c of M.rowControls(d)) assert.ok(M.controlAction(c, d), c)
-  }
-})
-
-test("a detail item activates to a setting, a refresh or a purge", () => {
-  const d = drive({ settings: { cacheSize: "4G", cacheAge: "72h", readOnly: false, autostart: true } })
-  assert.deepStrictEqual(M.detailAction(d, "readOnly"), { type: "set", key: "read-only", value: "true" })
-  assert.deepStrictEqual(M.detailAction(d, "autostart"), { type: "set", key: "autostart", value: "false" })
-  assert.deepStrictEqual(M.detailAction(d, "refresh"), { type: "refreshListing" })
-  assert.deepStrictEqual(M.detailAction(d, "clearCache"), { type: "clearCache" })
-  assert.strictEqual(M.detailAction(d, "tabs"), null)
-})
-
-test("every detail item the cursor can reach reacts to Enter or to h/l", () => {
-  const d = drive({ settings: { cacheSize: "4G", cacheAge: "72h", readOnly: false, autostart: true } })
-  for (const tab of M.DETAIL_TABS.map((t) => t.value)) {
-    for (const item of M.detailItems(d, tab)) {
-      assert.ok(M.detailAction(d, item) || M.stepAction(d, item, 1, tab), `${tab}/${item}`)
-    }
-  }
-})
-
-test("h and l step the tabs and the choice settings, and ignore toggles", () => {
-  const d = drive({ settings: { cacheSize: "4G", cacheAge: "72h", readOnly: false, autostart: true } })
-  assert.deepStrictEqual(M.stepAction(d, "tabs", 1, "cache"), { type: "tab", value: "behaviour" })
-  assert.deepStrictEqual(M.stepAction(d, "cacheSize", -1, "cache"), { type: "set", key: "cache-size", value: "1G" })
-  assert.deepStrictEqual(M.stepAction(d, "cacheAge", 1, "cache"), { type: "set", key: "cache-age", value: "168h" })
-  assert.strictEqual(M.stepAction(d, "readOnly", 1, "behaviour"), null)
-  assert.strictEqual(M.stepAction(d, "clearCache", 1, "maintenance"), null)
 })
 
 test("a mounted drive on the shared Google key shows a warning status", () => {
@@ -176,4 +85,102 @@ test("alerts cover upload failures and the shared Google key", () => {
 test("a drive with notifications off raises no alerts", () => {
   const state = { drives: [drive({ unit: "failed", mounted: false, settings: { notifications: false } })], activity: {} }
   assert.strictEqual(M.alerts(state, {}).length, 0)
+})
+
+const settings = { cacheSize: "4G", cacheAge: "72h", readOnly: false, autostart: true, notifications: true }
+
+test("a setting changes in a copy, to show before the next poll", () => {
+  const d = drive({ settings })
+  const next = M.withSetting(d, "read-only", "true")
+  assert.strictEqual(next.settings.readOnly, true)
+  assert.strictEqual(d.settings.readOnly, false, "the original is untouched")
+  assert.strictEqual(M.withSetting(d, "cache-size", "10G").settings.cacheSize, "10G")
+})
+
+test("every settings field maps to a setting the CLI knows", () => {
+  for (const setting of Object.values(M.FIELD_SETTING)) assert.ok(M.SETTINGS[setting], setting)
+  const fields = M.settingsPages(drive({ settings, sharedClientId: true }), {}).flatMap((p) => p.fields)
+  for (const f of fields.filter((f) => f.type === "bool" || f.type === "choice")) assert.ok(M.FIELD_SETTING[f.key], f.key)
+})
+
+test("a click or Enter on a row connects, opens or mounts", () => {
+  assert.deepStrictEqual(M.clickAction(drive({ configured: false, mounted: false })), { type: "interactive", command: "connect" })
+  assert.deepStrictEqual(M.clickAction(drive()), { type: "open" })
+  assert.deepStrictEqual(M.clickAction(drive({ mounted: false, unit: "inactive" })), { type: "mount" })
+})
+
+test("the switch mounts, or unmounts a drive that is mounted or on its way", () => {
+  assert.deepStrictEqual(M.toggleAction(drive()), { type: "unmount" })
+  assert.deepStrictEqual(M.toggleAction(drive({ mounted: false, unit: "activating" })), { type: "unmount" })
+  assert.deepStrictEqual(M.toggleAction(drive({ mounted: false, unit: "inactive" })), { type: "mount" })
+})
+
+test("keys: one letter, one action, and only where it makes sense", () => {
+  const summary = M.summarize([drive(), drive({ id: "onedrive", mounted: false })], {})
+  assert.deepStrictEqual(M.keyAction("r", null, summary), { type: "refresh" })
+  assert.deepStrictEqual(M.keyAction("N", null, summary), { type: "add" })
+  assert.deepStrictEqual(M.keyAction("a", null, summary), { type: "mountAll" })
+  const all = M.summarize([drive(), drive({ id: "onedrive" })], {})
+  assert.deepStrictEqual(M.keyAction("a", null, all), { type: "unmountAll" })
+  assert.strictEqual(M.keyAction("a", null, M.summarize([], {})), null, "nothing connected, nothing to mount")
+  assert.deepStrictEqual(M.keyAction("m", drive(), summary), { type: "unmount" })
+  assert.deepStrictEqual(M.keyAction("m", drive({ configured: false, mounted: false }), summary), { type: "interactive", command: "connect" })
+  assert.deepStrictEqual(M.keyAction("o", drive(), summary), { type: "open" })
+  assert.strictEqual(M.keyAction("o", drive({ mounted: false }), summary), null)
+  assert.deepStrictEqual(M.keyAction("s", drive(), summary), { type: "settings" })
+  assert.strictEqual(M.keyAction("s", drive({ configured: false, mounted: false }), summary), null)
+  assert.deepStrictEqual(M.keyAction("f", drive(), summary), { type: "interactive", command: "disconnect" })
+  assert.strictEqual(M.keyAction("f", drive({ configured: false, mounted: false }), summary), null)
+  assert.strictEqual(M.keyAction("m", null, summary), null, "no row under the cursor")
+  assert.strictEqual(M.keyAction("x", drive(), summary), null)
+})
+
+test("a row shows the first transfer and how many more wait", () => {
+  assert.strictEqual(M.transferLine(null), null)
+  assert.strictEqual(M.transferLine({ uploading: 0, queued: 2, transfers: [] }), null)
+  const line = M.transferLine({ uploading: 2, queued: 1, transfers: [{ name: "a.mov", percentage: 61.4, speed: 1900000 }, { name: "b.pdf", percentage: 5, speed: 0 }] })
+  assert.deepStrictEqual([line.name, line.percent, line.speed, line.more], ["a.mov", 61, "1.9 MB/s", 2])
+  assert.strictEqual(M.transferLine({ uploading: 1, queued: 0, transfers: [{ name: "x", percentage: 250 }] }).percent, 100)
+})
+
+test("a drive's settings window has four pages and starts on the first", () => {
+  const pages = M.settingsPages(drive({ settings }), { pending: 0 })
+  assert.deepStrictEqual(pages.map((p) => p.title), ["Behaviour", "Cache", "Maintenance", "Account"])
+  assert.strictEqual(M.settingsStartPage(drive({ settings })), 0)
+  assert.strictEqual(M.settingsStartPage(drive({ settings, sharedClientId: true })), 3, "the shared key goes straight to its fix")
+  const keys = pages.flatMap((p) => p.fields.map((f) => f.key))
+  assert.deepStrictEqual(keys, ["autostart", "readOnly", "notifications", "cacheSize", "cacheAge", "refresh", "clearCache", "forget"])
+  assert.deepStrictEqual(pages[1].fields[0].options, M.CACHE_SIZES)
+})
+
+test("maintenance explains why a button is off", () => {
+  const field = (d, ctx, key) => M.settingsPages(d, ctx).flatMap((p) => p.fields).find((f) => f.key === key)
+  const idle = drive({ settings, mounted: false, cacheBytes: 0 })
+  assert.strictEqual(field(idle, { pending: 0 }, "refresh").disabled, true)
+  assert.match(field(idle, { pending: 0 }, "refresh").hint, /Mount the drive/)
+  assert.strictEqual(field(drive({ settings }), { pending: 0 }, "refresh").disabled, false)
+  const waiting = field(drive({ settings }), { pending: 3 }, "clearCache")
+  assert.strictEqual(waiting.disabled, true)
+  assert.match(waiting.hint, /3 files/)
+  assert.match(field(drive({ settings, cacheBytes: 312000000 }), { pending: 0 }, "clearCache").hint, /^312 MB on disk/)
+  assert.strictEqual(field(drive({ settings }), { pending: 0, busy: true }, "forget").disabled, true)
+})
+
+test("the Google key action is offered only on the shared key", () => {
+  const keys = (d) => M.settingsPages(d, { pending: 0 })[3].fields.map((f) => f.key)
+  assert.deepStrictEqual(keys(drive({ settings })), ["forget"])
+  assert.deepStrictEqual(keys(drive({ settings, sharedClientId: true })), ["clientId", "forget"])
+})
+
+test("a button's answer goes under the button", () => {
+  const pages = M.settingsPages(drive({ settings }), { pending: 0, notes: { clearCache: { kind: "ok", text: "Cache cleared." } } })
+  const clear = pages[2].fields.find((f) => f.key === "clearCache")
+  assert.deepStrictEqual(clear.note, { kind: "ok", text: "Cache cleared." })
+  assert.strictEqual(pages[2].fields.find((f) => f.key === "refresh").note.text, "")
+})
+
+test("feedback goes under the setting it is about", () => {
+  const pages = M.settingsPages(drive({ settings }), { pending: 0, notes: { cacheSize: { kind: "bad", text: "nope" } } })
+  assert.deepStrictEqual(pages[1].fields[0].note, { kind: "bad", text: "nope" })
+  assert.strictEqual(pages[1].fields[1].note.text, "")
 })
