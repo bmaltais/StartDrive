@@ -27,6 +27,9 @@ Item {
   property string error: ""
   property string notice: ""
 
+  // Notification keys already shown; see Model.alerts.
+  property var announced: ({})
+
   readonly property bool busy: busyId !== ""
   readonly property var summary: Model.summarize(drives, activity)
   readonly property bool secure: rcloneInstalled && encrypted && keyring
@@ -34,6 +37,15 @@ Item {
   function drive(id) {
     for (var i = 0; i < drives.length; i++) if (drives[i].id === id) return drives[i]
     return null
+  }
+
+  // Tell the desktop about new problems, each once (see Model.alerts).
+  function notifyChanges() {
+    var list = Model.alerts({ drives: drives, activity: activity }, announced)
+    for (var i = 0; i < list.length; i++) {
+      Quickshell.execDetached(["notify-send", "--app-name=StartDrive", "--icon=weather-overcast",
+        "--urgency=" + (list[i].urgent ? "critical" : "normal"), list[i].title, list[i].body])
+    }
   }
 
   function refresh() { if (!stateProc.running) stateProc.running = true }
@@ -123,6 +135,7 @@ Item {
         service.keyring = !!s.keyring
         service.mountRoot = s.root || ""
         service.drives = s.drives || []
+        service.notifyChanges()
         // Mounts from before the rebrand are moved to the new unit, once.
         if (s.legacy && !migrateProc.running) migrateProc.running = true
       }
@@ -140,6 +153,7 @@ Item {
           var list = JSON.parse(String(text || "[]"))
           for (var i = 0; i < list.length; i++) next[list[i].id] = list[i]
           service.activity = next
+          service.notifyChanges()
         } catch (e) { /* keep the last figures */ }
       }
     }

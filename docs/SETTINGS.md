@@ -19,6 +19,7 @@ RCLONE_READ_ONLY=false
 | Keep files | `cache-age` | `72h` | hours, 1 to 99999 (the panel offers 6 h, 1 d, 3 d, 7 d and 30 d) | `RCLONE_VFS_CACHE_MAX_AGE` |
 | Read-only | `read-only` | `false` | `true` or `false` | `RCLONE_READ_ONLY` |
 | Mount at login | `autostart` | `false` | `true` or `false` | the unit's enablement |
+| Notifications | `notifications` | `true` | `true` or `false` | a `<remote>.quiet` file in `~/.config/startdrive` (present = off) |
 
 A value outside these shapes is never written. A hand-edited file with one is read as if the line were missing, and the default is used.
 

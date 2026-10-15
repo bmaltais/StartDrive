@@ -31,7 +31,7 @@ valid_setting() {
   case "$1" in
     cache-size) [[ $2 =~ ^[1-9][0-9]{0,3}[MG]$ ]] ;;
     cache-age) [[ $2 =~ ^[1-9][0-9]{0,4}h$ ]] ;;
-    read-only | autostart) [[ $2 == true || $2 == false ]] ;;
+    read-only | autostart | notifications) [[ $2 == true || $2 == false ]] ;;
     *) return 1 ;;
   esac
 }
@@ -56,15 +56,21 @@ autostart_enabled() {
   systemctl --user is-enabled --quiet "$(unit_of "$1")" 2>/dev/null
 }
 
+# Whether the panel may show desktop notifications for the drive. Stored as a
+# flag file, since it is not a mount option and must not restart the mount.
+notifications_enabled() { [[ ! -e "$CONFIG_DIR/$(remote_of "$1").quiet" ]]; }
+
 # The panel's field for a key: cache-size -> cacheSize (see SETTINGS in DriveModel.js).
 json_field() { sed -E 's/-(.)/\U\1/g' <<<"$1"; }
 
 settings_json() { # <id>
-  local auto=false key
+  local auto=false notify=false key
   autostart_enabled "$1" && auto=true
+  notifications_enabled "$1" && notify=true
   {
     for key in $(setting_keys); do printf '%s\t%s\n' "$(json_field "$key")" "$(setting_value "$1" "$key")"; done
     printf 'autostart\t%s\n' "$auto"
+    printf 'notifications\t%s\n' "$notify"
   } | jq -Rnc '[inputs | split("\t") | {key: .[0], value: (.[1] | if . == "true" then true elif . == "false" then false else . end)}] | from_entries'
 }
 
@@ -83,12 +89,20 @@ write_settings() {
 # set <id> <key> <value>. Mount options take effect when the mount restarts:
 # immediately if nothing is uploading, otherwise at the next mount.
 cmd_set() {
-  local id="$1" key="$2" value="$3" unit
+  local id="$1" key="$2" value="$3" unit quiet_file
   valid_setting "$key" "$value" || fail "invalid setting: $key=$value"
   unit="$(unit_of "$id")"
+  quiet_file="$CONFIG_DIR/$(remote_of "$id").quiet"
 
   if [[ $key == autostart ]]; then
     if [[ $value == true ]]; then systemctl --user enable "$unit" 2>/dev/null; else systemctl --user disable "$unit" 2>/dev/null; fi
+    echo "Saved."
+    return
+  fi
+
+  if [[ $key == notifications ]]; then
+    private_dir "$CONFIG_DIR"
+    if [[ $value == true ]]; then rm -f -- "${quiet_file}"; else : >"${quiet_file}"; fi
     echo "Saved."
     return
   fi

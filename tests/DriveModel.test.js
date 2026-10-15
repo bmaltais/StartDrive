@@ -5,7 +5,7 @@ const path = require("node:path")
 
 // DriveModel.js is a QML library; load it as a plain script.
 const source = fs.readFileSync(path.join(__dirname, "..", "DriveModel.js"), "utf8").replace(/^\.pragma.*$/m, "")
-const M = new Function(source + "\nreturn { formatBytes, formatSpeed, usageText, usageFraction, driveStatus, summarize, headline, rowControls, primaryControl, detailItems, navStops, DETAIL_TABS, stepOption, tildePath, GLYPH, CACHE_SIZES, CACHE_AGES, SETTINGS, DETAIL_SETTING, settingValue, withSetting, flipped, stepped, controlAction, detailAction, stepAction }")()
+const M = new Function(source + "\nreturn { formatBytes, formatSpeed, usageText, usageFraction, driveStatus, summarize, headline, rowControls, primaryControl, detailItems, navStops, DETAIL_TABS, stepOption, tildePath, GLYPH, CACHE_SIZES, CACHE_AGES, SETTINGS, DETAIL_SETTING, settingValue, withSetting, flipped, stepped, controlAction, detailAction, stepAction, alerts }")()
 
 const drive = (over) => Object.assign({ id: "google", configured: true, mounted: true, unit: "active" }, over)
 
@@ -73,7 +73,7 @@ test("cursor stops include only the expanded drive's details", () => {
 
 test("each tab has its own cursor stops", () => {
   assert.deepStrictEqual(M.detailItems(drive(), "cache"), ["tabs", "cacheSize", "cacheAge"])
-  assert.deepStrictEqual(M.detailItems(drive(), "behaviour"), ["tabs", "autostart", "readOnly"])
+  assert.deepStrictEqual(M.detailItems(drive(), "behaviour"), ["tabs", "autostart", "readOnly", "notifications"])
 })
 
 test("stepOption stops at the ends and tolerates unknown values", () => {
@@ -144,4 +144,36 @@ test("h and l step the tabs and the choice settings, and ignore toggles", () => 
   assert.deepStrictEqual(M.stepAction(d, "cacheAge", 1, "cache"), { type: "set", key: "cache-age", value: "168h" })
   assert.strictEqual(M.stepAction(d, "readOnly", 1, "behaviour"), null)
   assert.strictEqual(M.stepAction(d, "clearCache", 1, "maintenance"), null)
+})
+
+test("a mounted drive on the shared Google key shows a warning status", () => {
+  const shared = drive({ sharedClientId: true })
+  const status = M.driveStatus(shared, null, false)
+  assert.strictEqual(status.kind, "failed")
+  assert.match(status.text, /Shared Google key/)
+  assert.strictEqual(M.driveStatus(drive(), null, false).kind, "synced")
+})
+
+test("alerts say a problem once, and again if it returns", () => {
+  const announced = {}
+  const failed = { drives: [drive({ name: "Google Drive", unit: "failed", mounted: false })], activity: {} }
+  const ok = { drives: [drive({ name: "Google Drive" })], activity: {} }
+  assert.strictEqual(M.alerts(failed, announced).length, 1)
+  assert.strictEqual(M.alerts(failed, announced).length, 0)
+  assert.strictEqual(M.alerts(ok, announced).length, 0)
+  assert.strictEqual(M.alerts(failed, announced).length, 1)
+})
+
+test("alerts cover upload failures and the shared Google key", () => {
+  const state = {
+    drives: [drive({ name: "Google Drive", sharedClientId: true }), drive({ id: "r-x", name: "X", configured: false, sharedClientId: true })],
+    activity: { google: { errored: 2 } },
+  }
+  const keys = M.alerts(state, {}).map((a) => a.key).sort()
+  assert.deepStrictEqual(keys, ["google:shared", "google:upload"])
+})
+
+test("a drive with notifications off raises no alerts", () => {
+  const state = { drives: [drive({ unit: "failed", mounted: false, settings: { notifications: false } })], activity: {} }
+  assert.strictEqual(M.alerts(state, {}).length, 0)
 })

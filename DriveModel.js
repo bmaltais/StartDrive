@@ -27,12 +27,14 @@ var SETTINGS = {
   "cache-size": { field: "cacheSize", options: CACHE_SIZES },
   "cache-age": { field: "cacheAge", options: CACHE_AGES },
   "read-only": { field: "readOnly", boolean: true },
-  "autostart": { field: "autostart", boolean: true }
+  "autostart": { field: "autostart", boolean: true },
+  "notifications": { field: "notifications", boolean: true }
 }
 
 // The setting each detail item (a cursor stop) edits.
 var DETAIL_SETTING = {
-  cacheSize: "cache-size", cacheAge: "cache-age", readOnly: "read-only", autostart: "autostart"
+  cacheSize: "cache-size", cacheAge: "cache-age", readOnly: "read-only", autostart: "autostart",
+  notifications: "notifications"
 }
 
 function settingValue(drive, key) {
@@ -106,6 +108,7 @@ function driveStatus(drive, activity, working) {
   if (drive.unit === "failed") return { kind: "failed", text: "Mount failed · retrying" }
   if (drive.unit === "activating") return { kind: "working", text: "Mounting…" }
   if (!drive.mounted) return { kind: "off", text: "Connected · not mounted" }
+  if (drive.sharedClientId) return { kind: "failed", text: "Shared Google key · may freeze" }
   if (activity) {
     if (activity.errored > 0) return { kind: "failed", text: plural(activity.errored, "file", "files") + " failed to upload" }
     var n = pending(activity)
@@ -178,7 +181,7 @@ var DETAIL_TABS = [
 // The cursor stops of an expanded drive: its tab bar, then the open tab's items.
 function detailItems(drive, tab) {
   var items = ["tabs"]
-  if (tab === "behaviour") items.push("autostart", "readOnly")
+  if (tab === "behaviour") items.push("autostart", "readOnly", "notifications")
   else if (tab === "maintenance") {
     if (drive.mounted) items.push("refresh")
     items.push("clearCache")
@@ -251,3 +254,35 @@ function hasOption(options, value) {
 
 // Hide the home directory in a path.
 function tildePath(path) { return String(path || "").replace(/^\/home\/[^\/]+/, "~") }
+
+// What deserves a desktop notification. `state` is { drives, activity }; `announced` holds the keys already shown, so
+// a condition that lasts is said once. A key is forgotten when its condition
+// clears, so it is announced again if it returns. Returns the notifications to
+// show: { key, title, body, urgent }.
+function alerts(state, announced) {
+  var out = []
+  var seen = {}
+
+  function consider(key, active, title, body, urgent) {
+    if (!active) return
+    seen[key] = true
+    if (announced[key]) return
+    announced[key] = true
+    out.push({ key: key, title: title, body: body, urgent: !!urgent })
+  }
+
+  for (var j = 0; j < state.drives.length; j++) {
+    var d = state.drives[j]
+    if (!d.configured || (d.settings && d.settings.notifications === false)) continue
+    var act = state.activity[d.id]
+    consider(d.id + ":failed", d.unit === "failed",
+      d.name + " could not mount", "It will retry in a few seconds. Open StartDrive for details.", true)
+    consider(d.id + ":upload", !!act && act.errored > 0,
+      d.name + ": upload failed", plural(act ? act.errored : 0, "file", "files") + " could not be uploaded.", true)
+    consider(d.id + ":shared", !!d.sharedClientId && d.mounted,
+      d.name + " may freeze",
+      "It uses rclone's shared Google key, which Google limits. Open StartDrive and set up your own key.", false)
+  }
+  for (var key in announced) if (!seen[key]) delete announced[key]
+  return out
+}

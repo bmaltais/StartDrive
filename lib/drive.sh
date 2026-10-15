@@ -13,25 +13,36 @@ unit_property() {
   systemctl --user show "$1" -p "$2" 2>/dev/null | sed -n "s/^$2=//p"
 }
 
-drive_state_json() { # <id> <configured: true|false>
-  local id="$1" configured="$2" mounted=false unit_state
+# shared_client_remotes: Google remotes with no client_id of their own. They use
+# rclone's shared Google project, whose API quota every rclone user draws on.
+shared_client_remotes() {
+  have_rclone || return 0
+  rclone config dump 2>/dev/null |
+    jq -r 'to_entries[] | select(.value.type == "drive" and ((.value.client_id // "") == "")) | .key' || true
+}
+
+drive_state_json() { # <id> <configured: true|false> <shared client id: true|false>
+  local id="$1" configured="$2" shared="${3:-false}" mounted=false unit_state
   is_mounted "$id" && mounted=true
   unit_state="$(unit_property "$(unit_of "$id")" ActiveState)"
   jq -nc --arg id "$id" --arg remote "$(remote_of "$id")" --arg name "$(name_of "$id")" \
     --arg glyph "$(glyph_of "$id")" --arg path "$(mount_path "$id")" --arg unit "${unit_state:-inactive}" \
-    --argjson configured "$configured" --argjson mounted "$mounted" \
+    --argjson configured "$configured" --argjson mounted "$mounted" --argjson shared "$shared" \
     --argjson settings "$(settings_json "$id")" --argjson cacheBytes "$(cache_bytes "$id")" \
     '{id: $id, remote: $remote, name: $name, glyph: $glyph, path: $path, unit: $unit,
-      configured: $configured, mounted: $mounted, settings: $settings, cacheBytes: $cacheBytes}'
+      configured: $configured, mounted: $mounted, sharedClientId: $shared, settings: $settings, cacheBytes: $cacheBytes}'
 }
 
 cmd_state() {
-  local remotes id configured rows=() rclone=false encrypted=false keyring=false legacy=false
+  local remotes shared id configured uses_shared rows=() rclone=false encrypted=false keyring=false legacy=false
   remotes="$(list_remotes)"
+  shared="$(shared_client_remotes)"
   for id in $(provider_ids); do
     configured=false
     grep -qx "$(remote_of "$id")" <<<"$remotes" && configured=true
-    rows+=("$(drive_state_json "$id" "$configured")")
+    uses_shared=false
+    grep -qx "$(remote_of "$id")" <<<"$shared" && uses_shared=true
+    rows+=("$(drive_state_json "$id" "$configured" "$uses_shared")")
   done
   have_rclone && rclone=true
   config_encrypted && encrypted=true
@@ -122,7 +133,7 @@ cmd_open() {
 cmd_launch() {
   local command="${1:-}" id="${2:-}"
   case "$command" in
-    connect | disconnect) remote_of "$id" >/dev/null ;;
+    connect | disconnect | client-id) remote_of "$id" >/dev/null ;;
     add) id="" ;;
     *) fail "launch: '$command' is not an interactive command" ;;
   esac

@@ -239,6 +239,41 @@ Column {
     x: Style.space(16)
     spacing: Style.space(4)
 
+    // Google Drive on rclone's shared client id: its quota is shared with every
+    // rclone user, and when it runs out listings stall and the folder freezes.
+    Column {
+      width: parent.width
+      visible: !!card.drive.sharedClientId
+      spacing: Style.space(6)
+      topPadding: Style.space(4)
+
+      PanelSectionHeader {
+        text: "ACTION NEEDED"
+        foreground: card.fg
+        fontFamily: card.fontFamily
+      }
+      Text {
+        textFormat: Text.PlainText
+        width: parent.width
+        wrapMode: Text.WordWrap
+        text: "This drive uses rclone's shared Google key. Google limits it for everyone, so the folder can freeze. Create your own key (about five minutes, once) to stop it."
+        color: card.host.urgent
+        font.family: card.fontFamily
+        font.pixelSize: Style.font.caption
+      }
+      Button {
+        text: "Set up my own key"
+        iconText: "󰌆"
+        fontSize: Style.font.caption
+        foreground: card.fg
+        fontFamily: card.fontFamily
+        horizontalPadding: Style.spacing.md
+        verticalPadding: Style.spacing.controlPaddingY
+        bordered: true
+        onClicked: card.service.interactive("client-id", card.drive.id)
+      }
+    }
+
     // What is moving now: transfers from the mount's remote-control API.
     Column {
       width: parent.width
@@ -427,6 +462,21 @@ Column {
       onHasCursorChanged: if (hasCursor) card.host.reveal(readOnlyToggle)
       onHovered: function (on) { if (on) card.host.claim("detail", card.drive.id, "readOnly") }
       onClicked: card.host.activateDetail("readOnly", card.drive)
+    }
+
+    Toggle {
+      id: notifyToggle
+      width: parent.width
+      label: "Notifications"
+      description: "Tell me when this drive fails to mount or upload"
+      checked: card.drive.settings.notifications !== false
+      foreground: card.fg
+      fontFamily: card.fontFamily
+      enabled: !card.service.busy
+      hasCursor: card.host.isHot("detail", card.drive.id, "notifications")
+      onHasCursorChanged: if (hasCursor) card.host.reveal(notifyToggle)
+      onHovered: function (on) { if (on) card.host.claim("detail", card.drive.id, "notifications") }
+      onClicked: card.host.activateDetail("notifications", card.drive)
     }
 
     }

@@ -34,7 +34,7 @@ test("launch accepts add, and nothing else new", () => {
 test("settings accept only the allow-listed shapes", () => {
   const bad = [
     ["cache-size", "99X"], ["cache-size", "0G"], ["cache-size", "4G\nFOO=bar"], ["cache-size", "$(id)"],
-    ["cache-age", "7d"], ["cache-age", "-1h"], ["read-only", "yes"], ["autostart", "1"], ["colour", "red"],
+    ["cache-age", "7d"], ["cache-age", "-1h"], ["read-only", "yes"], ["autostart", "1"], ["notifications", "no"], ["colour", "red"],
   ]
   for (const [key, value] of bad) {
     const r = run("set", "google", key, value)
@@ -77,7 +77,7 @@ test("settings are written whole and read back as the panel's JSON", () => {
     // autostart is the unit's enablement, which belongs to the machine running the test.
     const { autostart, ...mount } = JSON.parse(defaults.stdout)
     assert.strictEqual(typeof autostart, "boolean")
-    assert.deepStrictEqual(mount, { cacheSize: "4G", cacheAge: "72h", readOnly: false })
+    assert.deepStrictEqual(mount, { cacheSize: "4G", cacheAge: "72h", readOnly: false, notifications: true })
     assert.strictEqual(bash("write_settings google cache-size 10G && write_settings google read-only true", env).status, 0)
     const file = fs.readFileSync(path.join(dir, "startdrive", "GoogleDrive.env"), "utf8")
     assert.strictEqual(file, "RCLONE_VFS_CACHE_MAX_SIZE=10G\nRCLONE_VFS_CACHE_MAX_AGE=72h\nRCLONE_READ_ONLY=true\n")

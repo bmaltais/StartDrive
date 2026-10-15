@@ -26,13 +26,14 @@ Mounts:   mount | unmount <drive>
           mount-all | unmount-all
           open <drive>               open the folder in the file manager
 Accounts: connect | disconnect <drive>   interactive (run in a terminal)
+          client-id <drive>          give Google Drive its own client id (stops quota freezes)
           add                        add any other rclone backend (SFTP, WebDAV, S3 ...)
 Cache:    clear-cache <drive>        delete the cached files (refused while uploading)
           refresh-listing <drive>    forget cached directory listings
 Settings: set <drive> <key> <value>  cache-size 1G..50G, cache-age 6h..720h,
                                      read-only true|false, autostart true|false
 Machine:  setup                      install rclone, encrypt the config, install the unit
-          launch <command> [drive]   run connect, disconnect or add in a floating terminal
+          launch <command> [drive]   run connect, disconnect, client-id or add in a floating terminal
           uninstall [--purge]        remove the unit and settings (--purge: also the keyring key)
 USAGE
 }
@@ -49,7 +50,7 @@ main() {
     unmount-all) cmd_all unmount ;;
     add) cmd_add ;;
     launch) cmd_launch "${2:-}" "${3:-}" ;;
-    connect | disconnect | mount | unmount | open | about | clear-cache | refresh-listing)
+    connect | disconnect | client-id | mount | unmount | open | about | clear-cache | refresh-listing)
       local id="${2:?missing drive (google, onedrive, dropbox or r-<name>)}"
       remote_of "$id" >/dev/null # rejects an unknown drive with a clear message
       "cmd_${command//-/_}" "$id"

@@ -50,3 +50,39 @@ cmd_add() {
   echo "Name it with letters, digits, - or _ and it appears in the panel."
   rclone config
 }
+
+# Give a Google drive its own OAuth client. Without one, rclone uses a Google
+# project whose API quota every rclone user shares; when it runs out Google
+# answers 403 rateLimitExceeded and listings stall for tens of seconds.
+cmd_client_id() {
+  local id="$1" remote client_id client_secret
+  [[ $(backend_of "$id") == drive ]] || fail "$(name_of "$id") is not a Google Drive"
+  remote="$(remote_of "$id")"
+  is_configured "$id" || fail "$(name_of "$id") is not connected yet"
+  cat <<'GUIDE'
+Google Drive is using rclone's shared client id, so its API quota is shared with
+every other rclone user and the drive can freeze when it runs out. Your own
+client id fixes that. It takes about five minutes, once:
+
+  1. Open https://console.cloud.google.com/ and create a project.
+  2. APIs & Services > Library: enable the "Google Drive API".
+  3. OAuth consent screen: choose External, fill in the app name and your email,
+     add yourself as a test user, then Publish the app so the sign-in does not
+     expire after a week.
+  4. Credentials > Create credentials > OAuth client ID > "Desktop app".
+  5. Copy the client ID and client secret it shows.
+
+Full guide: https://rclone.org/drive/#making-your-own-client-id
+GUIDE
+  echo
+  read -r -p "Client ID (empty to cancel): " client_id
+  [[ -n $client_id ]] || exit 130
+  read -r -s -p "Client secret: " client_secret
+  echo
+  [[ -n $client_secret ]] || fail "no client secret given"
+  rclone config update "$remote" client_id="$client_id" client_secret="$client_secret" >/dev/null
+  echo "A browser window will open to sign in again."
+  rclone config reconnect "$remote:"
+  systemctl --user restart "$(unit_of "$id")" 2>/dev/null || true
+  echo "Done. $(name_of "$id") now uses your own client id."
+}
