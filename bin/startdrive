@@ -8,7 +8,7 @@ set -euo pipefail
 SD_HOME="$(cd -- "$(dirname -- "$(readlink -f -- "${BASH_SOURCE[0]}")")/.." && pwd)"
 readonly SD_HOME
 
-for module in common system drive rc cache settings signin; do
+for module in common system drive rc lifecycle cache settings signin; do
   # shellcheck source=/dev/null
   source "$SD_HOME/lib/$module.sh"
 done

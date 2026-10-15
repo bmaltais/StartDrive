@@ -83,7 +83,7 @@ write_settings() {
 # set <id> <key> <value>. Mount options take effect when the mount restarts:
 # immediately if nothing is uploading, otherwise at the next mount.
 cmd_set() {
-  local id="$1" key="$2" value="$3" unit pending
+  local id="$1" key="$2" value="$3" unit
   valid_setting "$key" "$value" || fail "invalid setting: $key=$value"
   unit="$(unit_of "$id")"
 
@@ -96,8 +96,7 @@ cmd_set() {
   write_settings "$id" "$key" "$value"
 
   systemctl --user is-active --quiet "$unit" || { echo "Saved. Applies when mounted."; return; }
-  if pending="$(pending_uploads "$id")" && ((pending == 0)); then
-    systemctl --user restart "$unit"
+  if restart_mount_if_idle "$id"; then
     echo "Saved and applied."
   else
     echo "Saved. Applies at the next mount, since files are still uploading."

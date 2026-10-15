@@ -24,23 +24,19 @@ cmd_refresh_listing() {
   echo "Directory listing refreshed."
 }
 
-# Delete the cache. A mounted drive is stopped for the purge and mounted again;
-# files that have not finished uploading exist only in the cache, so the purge
-# is refused while any are pending.
-cmd_clear_cache() {
-  local id="$1" unit dir was_active=0 pending
-  unit="$(unit_of "$id")"
-  if systemctl --user is-active --quiet "$unit"; then
-    was_active=1
-    pending="$(pending_uploads "$id")" ||
-      fail "cannot tell whether uploads are pending; unmount and mount $(name_of "$id") again first"
-    ((pending == 0)) || fail "$pending file(s) are still uploading; try again once they are done"
-    systemctl --user stop "$unit"
-  fi
+# Delete the cache files of a drive that is not mounted. The only place the
+# cache is removed, so the path check below guards every purge.
+delete_cache_files() { # <id>
+  local dir
   while read -r dir; do
     [[ $dir == "$CACHE_ROOT"/vfs/?* || $dir == "$CACHE_ROOT"/vfsMeta/?* ]] || fail "refusing to delete $dir"
     rm -rf -- "$dir"
-  done < <(cache_dirs "$id")
-  ((was_active)) && systemctl --user start "$unit"
+  done < <(cache_dirs "$1")
+}
+
+# Delete the cache. A mounted drive is stopped for the purge and mounted again;
+# the purge is refused while uploads are pending (lib/lifecycle.sh).
+cmd_clear_cache() {
+  with_mount_stopped "$1" delete_cache_files "$1"
   echo "Cache cleared."
 }
