@@ -93,7 +93,7 @@ RCLONE_VFS_CACHE_MAX_AGE=72h
 RCLONE_READ_ONLY=false
 ```
 
-Only these shapes are accepted (a size in `M` or `G`, an age in hours, `true` or `false`); anything else is ignored and the default is used. Mount at login is the state of the drive's systemd unit.
+Every setting, its default and accepted values, the `startdrive set` command, and when a change applies are in [docs/SETTINGS.md](docs/SETTINGS.md).
 
 ## Commands
 
