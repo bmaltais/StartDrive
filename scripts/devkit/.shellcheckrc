@@ -1,0 +1,16 @@
+# One place for the shellcheck rules every script here is held to (CI and the apps' lint scripts read it).
+# These are disabled on purpose, not hidden:
+#   SC2034  variables a tour file sets are read by bin/tour, which shellcheck cannot see from the tour file
+#   SC2154  the reverse: names the recorder defines and a tour file uses
+#   SC1090  a sourced path that is only known at run time (the tour file)
+#   SC1091  a sourced file that shellcheck is not following
+#   SC2012  `ls` to pick the newest or first file of a glob, where the names are ours and plain
+#   SC2010  `ls | grep` over a directory of sockets and pids, same reason
+#   SC2016  single quotes around awk, jq and QML-bound text, where nothing should expand
+#   SC2086  unquoted `$HYPR...` style words that are numbers or plain names in the recorder's own variables
+#   SC2094  a file read in a loop while a different command appends to a sibling
+#   SC2155  `local x=$(...)` where the exit status is not used
+#   SC2329  a function that is only called indirectly (an app's check script runs them through `step`)
+#   SC2317  the same finding under its older number, which the shellcheck on the CI runner still uses
+disable=SC2034,SC2154,SC1090,SC1091,SC2012,SC2010,SC2016,SC2086,SC2094,SC2155,SC2329,SC2317
+external-sources=true
