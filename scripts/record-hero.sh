@@ -58,7 +58,7 @@ fi
 orig=$(hyprctl monitors -j | jq -r '.[] | select(.focused) | .name')
 rec_pid=""
 cleanup() {
-  [[ -n $rec_pid ]] && kill "$rec_pid" 2>/dev/null || true
+  if [[ -n $rec_pid ]]; then kill "$rec_pid" 2>/dev/null || true; fi
   omarchy-shell -q "$ID" close >/dev/null 2>&1 || true
   hyprctl dispatch "hl.dsp.focus({ monitor = \"$orig\" })" >/dev/null 2>&1 || true
   hyprctl output remove "$MON" >/dev/null 2>&1 || true
