@@ -40,7 +40,9 @@ while (($#)); do
 done
 
 branch=$(git -C "$REPO" branch --show-current)
-head=$(git -C "$REPO" rev-parse --short HEAD)$([[ -n $(git -C "$REPO" status --porcelain) ]] && echo "+local")
+head=$(git -C "$REPO" rev-parse --short HEAD)
+# "+local" marks changes that are not committed (the copy has them all the same). `if`, not `&&`: under set -e a clean tree must not exit here.
+if [[ -n $(git -C "$REPO" status --porcelain) ]]; then head+="+local"; fi
 
 # The installed plugin is a plain copy of this checkout (a plugin folder may not hold symlinks, and the shell's watcher does not
 # follow them), so a change reaches the shell by copying. What is copied is what is on disk, committed or not.
