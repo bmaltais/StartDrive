@@ -26,6 +26,13 @@ test("the id is namespaced and not first-party", () => {
   assert.ok(manifest.id.includes("."), "namespaced, e.g. io.github.<user>.<name>")
 })
 
+test("a service stays loaded, and the bar icon is optional", () => {
+  assert.ok(manifest.kinds.includes("service"))
+  assert.strictEqual(manifest.keepLoaded, true)
+  assert.ok(manifest.entryPoints.service)
+  assert.strictEqual(manifest.activation, undefined, "the service is always loaded")
+})
+
 test("a bar-widget declares its entry point and widget block", () => {
   assert.ok(manifest.kinds.includes("bar-widget"))
   assert.ok(manifest.entryPoints.barWidget)

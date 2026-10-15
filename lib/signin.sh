@@ -24,7 +24,7 @@ cmd_connect() {
   local id="$1" remote name
   remote="$(remote_of "$id")"
   name="$(name_of "$id")"
-  cmd_setup
+  cmd_prepare
   if is_configured "$id"; then
     echo "$name is already connected."
   else
@@ -45,7 +45,7 @@ cmd_connect() {
 # own questionnaire. The new remote shows up in the panel as a drive on the
 # next refresh, if its name is plain letters, digits, "-" or "_".
 cmd_add() {
-  cmd_setup
+  cmd_prepare
   echo "Add a remote with rclone's questionnaire: choose n) New remote, then follow the prompts."
   echo "Name it with letters, digits, - or _ and it appears in the panel."
   rclone config

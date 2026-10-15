@@ -1,0 +1,112 @@
+#!/usr/bin/env bash
+# reload: run this checkout's code in the live Omarchy shell, and say what the plugin logs.
+#
+#   scripts/reload [open | setup | settings DRIVE_ID] [--shot FILE]
+#   scripts/reload --check
+#
+#   (nothing)      copy this checkout over the installed plugin, restart the shell, report errors
+#   open           then open the manager (closed first, so the toggle cannot hide it)
+#   setup          then open the settings window
+#   settings ID    then open that drive's settings (ID as in `startdrive state`)
+#   --shot FILE    then screenshot the focused monitor to FILE (the path is printed)
+#   --check        read-only: say whether the installed plugin matches this checkout, change nothing
+#
+# New QML only loads after a full shell restart (`omarchy plugin disable` and `enable`, and the shell's "Local plugin changed,
+# reloading" message, leave the old code running). The installed plugin is a plain copy of this checkout, so reload copies what
+# is on disk (no commit or push needed; the first time it keeps the old one in ~/.local/share/startdrive-dev/plugin-before-reload) and then restarts the shell. The
+# bar blinks during the restart. Your drives and mounts live in systemd and are not touched.
+#
+# Prints one line, then at most 8 error lines:
+#   reload ok human-input@5e69770 restart 6.1s qml-errors 0
+#     err: <a line the plugin logged, with the shell's usual noise removed>
+# Exits 1 on a sync or restart failure, a window that did not open, or any plugin error.
+set -euo pipefail
+
+ID=io.github.bmaltais.startdrive
+REPO=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+INSTALLED=$HOME/.config/omarchy/plugins/$ID
+window="" app="" shot="" check=false
+
+die() { echo "reload: $*" >&2; exit 1; }
+while (($#)); do
+  case $1 in
+    open | setup) window=$1; shift ;;
+    settings) window=settings; app=${2:-}; [[ -n $app ]] || die "settings needs a drive id"; shift 2 ;;
+    --shot) shot=${2:-}; [[ -n $shot ]] || die "--shot needs a file"; shift 2 ;;
+    --check) check=true; shift ;;
+    -h | --help) sed -n '2,/^set -euo/p' "${BASH_SOURCE[0]}" | sed '$d; s/^# \{0,1\}//'; exit 0 ;;
+    *) die "unknown argument $1 (see --help)" ;;
+  esac
+done
+
+branch=$(git -C "$REPO" branch --show-current)
+head=$(git -C "$REPO" rev-parse --short HEAD)$([[ -n $(git -C "$REPO" status --porcelain) ]] && echo "+local")
+
+# The installed plugin is a plain copy of this checkout (a plugin folder may not hold symlinks, and the shell's watcher does not
+# follow them), so a change reaches the shell by copying. What is copied is what is on disk, committed or not.
+excludes=(--exclude=.git --exclude=tests --exclude=screenshots --exclude=node_modules --exclude=preview.png)
+in_sync() { diff -rq "${excludes[@]}" --exclude=docs --exclude='*.md' "$REPO" "$INSTALLED" >/dev/null 2>&1; }
+if $check; then
+  if in_sync; then echo "reload check: in sync, $branch@$head"; else echo "reload check: the installed plugin differs from this checkout ($branch@$head)"; fi
+  in_sync; exit
+fi
+# The first time, keep what was installed, so there is a way back. Not beside it: the shell scans every folder in plugins/.
+BACKUP=$HOME/.local/share/startdrive-dev/plugin-before-reload
+[[ -e $BACKUP ]] || { mkdir -p "$(dirname "$BACKUP")"; cp -a "$INSTALLED" "$BACKUP"; }
+mkdir -p "$INSTALLED"
+find "$INSTALLED" -mindepth 1 -delete
+tar "${excludes[@]}" --exclude=docs -cf - -C "$REPO" . | tar -xf - -C "$INSTALLED"
+[[ -L $INSTALLED ]] || ! find "$INSTALLED" -type l | grep -q . || die "the installed copy holds a symlink, which the plugin loader refuses"
+
+since=$(date '+%Y-%m-%d %H:%M:%S')
+t0=$(date +%s.%N)
+omarchy-restart-shell >/dev/null 2>&1 || die "omarchy-restart-shell failed"
+up=false
+for _ in $(seq 1 60); do
+  [[ $(omarchy-shell shell ping 2>/dev/null) == ok ]] && { up=true; break; }
+  sleep 0.5
+done
+$up || die "the shell did not answer after the restart"
+sleep 2
+took=$(awk -v a="$t0" -v b="$(date +%s.%N)" 'BEGIN { printf "%.1f", b - a }')
+
+# The service loads a moment after the shell answers: wait until it does, so a window can be opened.
+for _ in $(seq 1 40); do
+  omarchy-shell "$ID" state >/dev/null 2>&1 && break
+  sleep 0.5
+done
+
+opened=true
+case $window in
+  open)
+    omarchy-shell -q "$ID" close || true
+    sleep 0.4
+    omarchy-shell "$ID" open >/dev/null
+    ;;
+  setup) omarchy-shell "$ID" setup >/dev/null ;;
+  settings) omarchy-shell "$ID" settings "$app" >/dev/null ;;
+esac
+if [[ -n $window ]]; then
+  sleep 2
+  hyprctl layers -j | jq -e '[.. | .namespace? // empty] | any(. == "omarchy-startdrive")' >/dev/null || opened=false
+fi
+
+# What the plugin logged since the restart, without the shell's standing noise.
+errors=$(journalctl --user --since "$since" --no-pager -o cat 2>/dev/null |
+  sed 's/\x1b\[[0-9;]*m//g' |
+  grep -E "io\.github\.bmaltais\.startdrive" |
+  grep -E "WARN|ERROR|ReferenceError|TypeError|Unable to assign|Cannot (assign|read|call)|is not a type|is not defined|failed|Read of" |
+  grep -vE "recursive rearrange|Local plugin changed|qt\.svg|IpcHandler|ShellIpc|Handler was registered|qmlscanner|DEBUG" |
+  sort -u || true)
+count=0
+[[ -z $errors ]] || count=$(wc -l <<<"$errors")
+
+state=ok
+{ ((count > 0)) || ! $opened; } && state=FAILED
+echo "reload $state $branch@$head restart ${took}s qml-errors $count${window:+ window $window $($opened && echo up || echo NOT-UP)}"
+if [[ -n $shot ]]; then
+  mon=$(hyprctl monitors -j | jq -r '.[] | select(.focused) | .name')
+  grim -o "$mon" "$shot" && echo "  shot $shot"
+fi
+if ((count > 0)); then head -8 <<<"$errors" | cut -c1-220 | sed 's/^/  err: /'; fi
+[[ $state == ok ]]

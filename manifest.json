@@ -5,17 +5,27 @@
   "version": "1.0.1",
   "author": "Bernard Maltais",
   "license": "MIT",
-  "description": "Cloud drives as folders from the Omarchy bar: Google Drive, OneDrive, Dropbox and any other rclone backend, with live upload activity, cache controls and per-drive settings.",
-  "kinds": ["bar-widget"],
-  "activation": "on-demand",
+  "description": "Cloud drives as folders from Omarchy: Google Drive, OneDrive, Dropbox and any other rclone backend, with a manager window, live upload activity, an optional bar icon and per-drive settings.",
+  "kinds": [
+    "service",
+    "bar-widget"
+  ],
+  "keepLoaded": true,
   "entryPoints": {
-    "barWidget": "Panel.qml"
+    "service": "Service.qml",
+    "barWidget": "BarWidget.qml"
   },
   "barWidget": {
     "displayName": "StartDrive",
-    "description": "Mount and manage Google Drive, OneDrive, Dropbox and more.",
+    "description": "Open the StartDrive manager from the bar; the cloud shows uploads and failures.",
     "category": "System",
-    "aliases": ["cloud", "drive", "google-drive", "onedrive", "rclone"],
+    "aliases": [
+      "cloud",
+      "drive",
+      "google-drive",
+      "onedrive",
+      "rclone"
+    ],
     "allowMultiple": false,
     "defaultSection": "right",
     "defaults": {},

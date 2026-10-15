@@ -13,7 +13,7 @@ const run = (...args) => spawnSync(script, args, { encoding: "utf8" })
 test("help lists the commands", () => {
   const r = run("--help")
   assert.strictEqual(r.status, 0)
-  for (const word of ["state", "activity", "clear-cache", "set", "uninstall"]) assert.match(r.stdout, new RegExp(word))
+  for (const word of ["state", "activity", "clear-cache", "set", "uninstall", "integration", "setup", "window", "prepare", "STARTDRIVE_DEMO"]) assert.match(r.stdout, new RegExp(word))
 })
 
 test("an unknown command is refused", () => assert.strictEqual(run("nonsense").status, 2))
@@ -44,7 +44,7 @@ test("settings accept only the allow-listed shapes", () => {
 })
 
 test("launch runs only the interactive commands", () => {
-  for (const command of ["rm", "mount", "set", "clear-cache", "setup"]) {
+  for (const command of ["rm", "mount", "set", "clear-cache", "setup", "prepare", "window"]) {
     const r = run("launch", command, "google")
     assert.notStrictEqual(r.status, 0, command)
     assert.match(r.stderr, /not an interactive command/)

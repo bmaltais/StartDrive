@@ -8,10 +8,16 @@ set -euo pipefail
 SD_HOME="$(cd -- "$(dirname -- "$(readlink -f -- "${BASH_SOURCE[0]}")")/.." && pwd)"
 readonly SD_HOME
 
-for module in common system drive rc lifecycle cache settings signin; do
+for module in common system drive rc lifecycle cache settings signin prefs; do
   # shellcheck source=/dev/null
   source "$SD_HOME/lib/$module.sh"
 done
+
+# Fixture drives and no contact with the real machine: see lib/demo.sh.
+if [[ ${STARTDRIVE_DEMO:-} == 1 || -f $CONFIG_DIR/demo/ENABLED ]]; then
+  # shellcheck source=/dev/null
+  source "$SD_HOME/lib/demo.sh"
+fi
 
 usage() {
   cat <<'USAGE'
@@ -32,9 +38,16 @@ Cache:    clear-cache <drive>        delete the cached files (refused while uplo
           refresh-listing <drive>    forget cached directory listings
 Settings: set <drive> <key> <value>  cache-size 1G..50G, cache-age 6h..720h,
                                      read-only true|false, autostart true|false
-Machine:  setup                      install rclone, encrypt the config, install the unit
+Machine:  prepare                    install rclone, encrypt the config, install the unit
           launch <command> [drive]   run connect, disconnect, client-id or add in a floating terminal
           uninstall [--purge]        remove the unit and settings (--purge: also the keyring key)
+Plugin:   integration                what is switched on, as JSON
+          setup [--launcher B] [--cli B] [--bar-icon B] [--remember-size B] [--remember-position B] [--done] [--json]
+                                     switch the app launcher entry, command-line link and bar icon
+          window [--size WxH] [--offset X,Y] [--reset] [--setup-size WxH] [--setup-offset X,Y] [--reset-setup]
+                                     where the windows were left; no option prints them as JSON
+          ui                         show or hide the manager window
+Demo:     STARTDRIVE_DEMO=1 runs every command on fixture drives, touching nothing real (used by the test session)
 USAGE
 }
 
@@ -43,7 +56,11 @@ main() {
   case "$command" in
     state) cmd_state ;;
     activity) cmd_activity ;;
-    setup) cmd_setup ;;
+    prepare) cmd_prepare ;;
+    integration) cmd_integration ;;
+    setup) shift; cmd_setup "$@" ;;
+    window) shift; cmd_window "$@" ;;
+    ui) cmd_ui ;;
     migrate) migrate_legacy ;;
     uninstall) cmd_uninstall "${2:-}" ;;
     mount-all) cmd_all mount ;;

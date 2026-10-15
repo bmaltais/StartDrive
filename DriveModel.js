@@ -1,4 +1,4 @@
-// The rules of the panel, with no Quickshell imports so they run under Node
+// The rules of the manager, with no Quickshell imports so they run under Node
 // (tests/DriveModel.test.js). A drive is one entry of `startdrive state`; an
 // activity is one entry of `startdrive activity`.
 
@@ -31,14 +31,10 @@ var SETTINGS = {
   "notifications": { field: "notifications", boolean: true }
 }
 
-// The setting each detail item (a cursor stop) edits.
-var DETAIL_SETTING = {
+// The settings window's field for each setting, and the key `startdrive set` takes for it.
+var FIELD_SETTING = {
   cacheSize: "cache-size", cacheAge: "cache-age", readOnly: "read-only", autostart: "autostart",
   notifications: "notifications"
-}
-
-function settingValue(drive, key) {
-  return String(drive.settings[SETTINGS[key].field])
 }
 
 // A copy of the drive with one setting changed, to show it before the next poll.
@@ -46,16 +42,6 @@ function withSetting(drive, key, value) {
   var settings = Object.assign({}, drive.settings)
   settings[SETTINGS[key].field] = SETTINGS[key].boolean ? value === "true" : value
   return Object.assign({}, drive, { settings: settings })
-}
-
-// The value a toggle sets next.
-function flipped(drive, key) {
-  return String(settingValue(drive, key) !== "true")
-}
-
-// The next preset of a choice setting, `delta` steps along.
-function stepped(drive, key, delta) {
-  return stepOption(SETTINGS[key].options, settingValue(drive, key), delta)
 }
 
 // Glyphs from the Material Design set in the Nerd Font Omarchy ships.
@@ -96,10 +82,6 @@ function pending(activity) {
   return activity ? (activity.uploading || 0) + (activity.queued || 0) : 0
 }
 
-function isBusy(drive, activity) {
-  return !!activity && (pending(activity) > 0)
-}
-
 // What a row says about its drive. `kind` picks the dot colour and whether it
 // pulses; `text` is the line under the name.
 function driveStatus(drive, activity, working) {
@@ -136,7 +118,8 @@ function summarize(drives, activities) {
       s.speed += a.speed || 0
     }
   }
-  s.glyph = (s.failed || s.errored) ? GLYPH.alert : s.pending > 0 ? GLYPH.uploading : s.mounted > 0 ? GLYPH.mounted : GLYPH.idle
+  s.kind = (s.failed || s.errored) ? "alert" : s.pending > 0 ? "uploading" : s.mounted > 0 ? "mounted" : "idle"
+  s.glyph = GLYPH[s.kind]
   return s
 }
 
@@ -152,108 +135,95 @@ function headline(summary, secure, rcloneInstalled) {
   return summary.mounted > 0 ? "All synced" : "Nothing mounted"
 }
 
-// ---- Keyboard cursor ----------------------------------------------------
-// One flat list of stops: each drive's row, then (for the expanded drive) its
-// detail items. `rowControls` are the buttons along a row; h/l walks them.
-
-function rowControls(drive) {
-  if (!drive.configured) return ["connect"]
-  return drive.mounted ? ["open", "details", "disconnect", "toggle"] : ["details", "disconnect", "toggle"]
-}
-
-function primaryControl(drive) {
-  var c = rowControls(drive)
-  return c[c.length - 1]
-}
-
-// What a click on the row itself does: connect it, open it, or mount it.
-function clickControl(drive) {
-  if (!drive.configured) return "connect"
-  return drive.mounted ? "open" : "toggle"
-}
-
-var DETAIL_TABS = [
-  { value: "cache", label: "Cache" },
-  { value: "behaviour", label: "Behaviour" },
-  { value: "maintenance", label: "Maintenance" }
-]
-
-// The cursor stops of an expanded drive: its tab bar, then the open tab's items.
-function detailItems(drive, tab) {
-  var items = ["tabs"]
-  if (tab === "behaviour") items.push("autostart", "readOnly", "notifications")
-  else if (tab === "maintenance") {
-    if (drive.mounted) items.push("refresh")
-    items.push("clearCache")
-  } else items.push("cacheSize", "cacheAge")
-  return items
-}
-
-// ---- What a control does ------------------------------------------------
-// Enter, a click and h/l all ask here and get an action back, so the keyboard
-// and the pointer cannot disagree. Panel.dispatch carries the action out:
-//   { type: "mount" | "unmount" | "open" | "details" | "refreshListing" | "clearCache" }
+// ---- What a click or a key does ----------------------------------------------
+// A click on a row, Enter and the letter keys all ask here and get an action back, so the keyboard and the pointer cannot
+// disagree. Service.qml carries the action out:
+//   { type: "mount" | "unmount" | "open" | "settings" | "mountAll" | "unmountAll" | "refresh" | "add" }
 //   { type: "interactive", command: "connect" | "disconnect" }
-//   { type: "set", key, value }   { type: "tab", value }
 
-// A row's button (see rowControls).
-function controlAction(control, drive) {
-  switch (control) {
-  case "toggle": return { type: (drive.mounted || drive.unit === "activating") ? "unmount" : "mount" }
-  case "open": return { type: "open" }
-  case "details": return { type: "details" }
-  case "connect":
-  case "disconnect": return { type: "interactive", command: control }
+// What a click on the row itself (or Enter) does: connect it, open it, or mount it.
+function clickAction(drive) {
+  if (!drive.configured) return { type: "interactive", command: "connect" }
+  return drive.mounted ? { type: "open" } : { type: "mount" }
+}
+
+function toggleAction(drive) {
+  return { type: (drive.mounted || drive.unit === "activating") ? "unmount" : "mount" }
+}
+
+// A letter typed in the manager. `drive` is the row under the cursor (or null); `summary` is summarize()'s result.
+function keyAction(key, drive, summary) {
+  switch (String(key).toLowerCase()) {
+  case "r": return { type: "refresh" }
+  case "n": return { type: "add" }
+  case "a":
+    if (!summary || summary.connected < 1) return null
+    return { type: summary.mounted === summary.connected ? "unmountAll" : "mountAll" }
+  }
+  if (!drive) return null
+  switch (String(key).toLowerCase()) {
+  case "m": return drive.configured ? toggleAction(drive) : { type: "interactive", command: "connect" }
+  case "o": return drive.mounted ? { type: "open" } : null
+  case "s": return drive.configured ? { type: "settings" } : null
+  case "f": return drive.configured ? { type: "interactive", command: "disconnect" } : null
   }
   return null
 }
 
-// Enter or a click on a detail item (see detailItems).
-function detailAction(drive, item) {
-  var key = DETAIL_SETTING[item]
-  if (key) return { type: "set", key: key, value: flipped(drive, key) }
-  if (item === "refresh") return { type: "refreshListing" }
-  if (item === "clearCache") return { type: "clearCache" }
-  return null
-}
-
-// h or l (delta -1 or +1) on a detail item: the tabs and the choice settings.
-function stepAction(drive, item, delta, tab) {
-  if (item === "tabs") return { type: "tab", value: stepOption(DETAIL_TABS, tab, delta) }
-  var key = DETAIL_SETTING[item]
-  if (key && SETTINGS[key].options) return { type: "set", key: key, value: stepped(drive, key, delta) }
-  return null
-}
-
-function navStops(drives, expandedId, tab) {
-  var stops = []
-  for (var i = 0; i < drives.length; i++) {
-    stops.push({ kind: "row", id: drives[i].id })
-    if (drives[i].configured && drives[i].id === expandedId) {
-      var items = detailItems(drives[i], tab)
-      for (var j = 0; j < items.length; j++) stops.push({ kind: "detail", id: drives[i].id, key: items[j] })
-    }
+// The transfer a row shows under its status while files are moving: the first one, and how many more are waiting.
+function transferLine(activity) {
+  if (!activity || !activity.transfers || activity.transfers.length === 0) return null
+  var t = activity.transfers[0]
+  return {
+    name: t.name,
+    percent: Math.round(Math.max(0, Math.min(100, t.percentage || 0))),
+    fraction: Math.max(0, Math.min(1, (t.percentage || 0) / 100)),
+    speed: formatSpeed(t.speed),
+    more: Math.max(0, pending(activity) - 1)
   }
-  return stops
 }
 
-function clamp(n, lo, hi) { return Math.max(lo, Math.min(hi, n)) }
-
-// The option after `current` in `options` by `delta`, stopping at the ends.
-function stepOption(options, current, delta) {
-  var i = 0
-  for (var k = 0; k < options.length; k++) if (options[k].value === current) i = k
-  return options[clamp(i + delta, 0, options.length - 1)].value
+// ---- A drive's settings window ----------------------------------------------------
+// The pages of SettingsWindow for one drive. `ctx` is { pending: files still uploading, busy: an action is running,
+// notes: { fieldKey: { kind, text } } feedback under a setting }. The window's value for a field is drive.settings[key];
+// a change to a field in FIELD_SETTING is `startdrive set`, and an "action" field is a button.
+function settingsPages(drive, ctx) {
+  var notes = ctx.notes || {}
+  function note(key) { return notes[key] || { kind: "muted", text: "" } }
+  var waiting = ctx.pending > 0
+  var cache = [
+    { key: "cacheSize", type: "choice", label: "Cache limit", options: CACHE_SIZES,
+      hint: "The most local disk the cache may use.", note: note("cacheSize") },
+    { key: "cacheAge", type: "choice", label: "Keep files", options: CACHE_AGES,
+      hint: "How long unused files stay in the cache.", note: note("cacheAge") }
+  ]
+  var account = []
+  if (drive.sharedClientId) {
+    account.push({ key: "clientId", type: "action", label: "Use my own Google key", buttonText: "Set up\u2026", disabled: !!ctx.busy,
+      hint: "This drive uses rclone's shared Google key. Google limits it for everyone, so the folder can freeze. Your own key takes about five minutes, once." })
+  }
+  account.push({ key: "forget", type: "action", label: "Forget this account", buttonText: "Forget\u2026", disabled: !!ctx.busy,
+    hint: "Disconnects the drive and removes its credentials from this machine. Your files in the cloud are not touched. A terminal asks you to confirm." })
+  return [
+    { title: "Behaviour", fields: [
+      { key: "autostart", type: "bool", label: "Mount at login", hint: "Mounts this drive when your session starts.", note: note("autostart") },
+      { key: "readOnly", type: "bool", label: "Read-only", hint: "Blocks writes and deletes through the folder.", note: note("readOnly") },
+      { key: "notifications", type: "bool", label: "Notifications", hint: "Tells you when this drive fails to mount or upload.", note: note("notifications") }
+    ] },
+    { title: "Cache", fields: cache },
+    { title: "Maintenance", fields: [
+      { key: "refresh", type: "action", label: "Refresh listing", buttonText: "Refresh", disabled: !drive.mounted || !!ctx.busy, note: note("refresh"),
+        hint: drive.mounted ? "Looks for changes made elsewhere in the cloud." : "Mount the drive to refresh its listing." },
+      { key: "clearCache", type: "action", label: "Clear cache", buttonText: "Clear", disabled: waiting || !!ctx.busy, note: note("clearCache"),
+        hint: waiting ? "Wait for " + plural(ctx.pending, "file", "files") + " to finish uploading."
+          : (formatBytes(drive.cacheBytes) || "0 B") + " on disk. Deletes the plaintext copies rclone keeps." }
+    ] },
+    { title: "Account", fields: account }
+  ]
 }
 
-// The nearest preset to a stored value, so a hand-edited setting still shows.
-function hasOption(options, value) {
-  for (var k = 0; k < options.length; k++) if (options[k].value === value) return true
-  return false
-}
-
-// Hide the home directory in a path.
-function tildePath(path) { return String(path || "").replace(/^\/home\/[^\/]+/, "~") }
+// The page to open first: a drive on the shared Google key goes straight to the fix.
+function settingsStartPage(drive) { return drive.sharedClientId ? 3 : 0 }
 
 // What deserves a desktop notification. `state` is { drives, activity }; `announced` holds the keys already shown, so
 // a condition that lasts is said once. A key is forgotten when its condition
