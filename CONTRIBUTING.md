@@ -23,6 +23,7 @@
 | `scripts/check.sh`, `lint-sh.sh`, `lint-qml.py`, `.githooks/`, `.github/workflows/check.yml` | The checks, the pre-commit hook (`git config core.hooksPath .githooks` once per clone; it refuses commits on `main`) and the CI job |
 | `scripts/dev`, `dev-view.qml`, `reload`, `pointer.sh`, `sheet` | Testing tools: a nested test session, the real-shell reload, a pointer click, contact sheets. See [docs/testing.md](docs/testing.md) |
 | `tests/cli.sh`, `tests/*.test.js` | Command-line behaviour tests (demo mode) and Node tests for the model, input checks, upload safety and the marketplace rules |
+| `docs/omarchy-plugins.md` | How Omarchy enables and loads this plugin, and what picks up each kind of change |
 | `docs/testing.md` | How a change is checked and tried, and what went wrong before |
 | `docs/ui-standards.md` | How the UI looks and behaves, and why. Read it before changing the UI, and update it when a design decision changes |
 | `docs/SETTINGS.md`, `docs/SECURITY.md` | Every setting, and everything the plugin runs, installs and trusts. Keep SECURITY true: any new dependency, command, file or privilege goes in it |

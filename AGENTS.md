@@ -28,3 +28,7 @@ Single-context: one `GLOSSARY.md` and `docs/adr/` at the repo root. See `docs/ag
 
 `docs/recording-tours.md` before changing `scripts/tour.sh`, `scripts/tours/`, `scripts/tour-banner.qml` or `scripts/nested/`. `scripts/screenshots.sh` and `scripts/preview.sh` retake the README images.
 
+## Omarchy plugin loading
+
+`docs/omarchy-plugins.md` before changing `manifest.json`, enabling or removing the bar icon, installing or reloading the plugin, or when the shell shows old code: what enables a plugin, what picks up a change, why `plugins/` takes no backups, and whether the installed copy is a clone.
+
