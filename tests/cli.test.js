@@ -4,6 +4,8 @@ const test = require("node:test")
 const assert = require("node:assert")
 const { spawnSync } = require("node:child_process")
 const path = require("node:path")
+const fs = require("node:fs")
+const os = require("node:os")
 
 const script = path.join(__dirname, "..", "bin", "startdrive")
 const run = (...args) => spawnSync(script, args, { encoding: "utf8" })
@@ -46,5 +48,42 @@ test("launch runs only the interactive commands", () => {
     const r = run("launch", command, "google")
     assert.notStrictEqual(r.status, 0, command)
     assert.match(r.stderr, /not an interactive command/)
+  }
+})
+
+// The panel's presets and the CLI's allow-list live in different languages; the
+// presets must all be accepted by the CLI.
+const root = path.join(__dirname, "..")
+const bash = (script, env = {}) =>
+  spawnSync("bash", ["-c", `source lib/common.sh; source lib/settings.sh; ${script}`], {
+    cwd: root, encoding: "utf8", env: { ...process.env, ...env },
+  })
+
+test("every preset in the panel passes the CLI's allow-list", () => {
+  const source = fs.readFileSync(path.join(root, "DriveModel.js"), "utf8").replace(/^\.pragma.*$/m, "")
+  const M = new Function(source + "\nreturn { SETTINGS }")()
+  for (const [key, setting] of Object.entries(M.SETTINGS)) {
+    for (const option of setting.options || []) {
+      assert.strictEqual(bash(`valid_setting ${key} ${option.value}`).status, 0, `${key}=${option.value}`)
+    }
+  }
+})
+
+test("settings are written whole and read back as the panel's JSON", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "startdrive-"))
+  const env = { XDG_CONFIG_HOME: dir }
+  try {
+    const defaults = bash("settings_json google", env)
+    // autostart is the unit's enablement, which belongs to the machine running the test.
+    const { autostart, ...mount } = JSON.parse(defaults.stdout)
+    assert.strictEqual(typeof autostart, "boolean")
+    assert.deepStrictEqual(mount, { cacheSize: "4G", cacheAge: "72h", readOnly: false })
+    assert.strictEqual(bash("write_settings google cache-size 10G && write_settings google read-only true", env).status, 0)
+    const file = fs.readFileSync(path.join(dir, "startdrive", "GoogleDrive.env"), "utf8")
+    assert.strictEqual(file, "RCLONE_VFS_CACHE_MAX_SIZE=10G\nRCLONE_VFS_CACHE_MAX_AGE=72h\nRCLONE_READ_ONLY=true\n")
+    const stored = JSON.parse(bash("settings_json google", env).stdout)
+    assert.deepStrictEqual([stored.cacheSize, stored.cacheAge, stored.readOnly], ["10G", "72h", true])
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true })
   }
 })

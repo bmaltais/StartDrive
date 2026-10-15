@@ -20,6 +20,42 @@ var CACHE_AGES = [
   { value: "720h", label: "30 d" }
 ]
 
+// The per-drive settings. `key` is what `startdrive set` takes; `field` is
+// where the drive's `settings` object carries it. Booleans travel as "true" /
+// "false". Presets (`options`) must pass the CLI's allow-list in lib/settings.sh.
+var SETTINGS = {
+  "cache-size": { field: "cacheSize", options: CACHE_SIZES },
+  "cache-age": { field: "cacheAge", options: CACHE_AGES },
+  "read-only": { field: "readOnly", boolean: true },
+  "autostart": { field: "autostart", boolean: true }
+}
+
+// The setting each detail item (a cursor stop) edits.
+var DETAIL_SETTING = {
+  cacheSize: "cache-size", cacheAge: "cache-age", readOnly: "read-only", autostart: "autostart"
+}
+
+function settingValue(drive, key) {
+  return String(drive.settings[SETTINGS[key].field])
+}
+
+// A copy of the drive with one setting changed, to show it before the next poll.
+function withSetting(drive, key, value) {
+  var settings = Object.assign({}, drive.settings)
+  settings[SETTINGS[key].field] = SETTINGS[key].boolean ? value === "true" : value
+  return Object.assign({}, drive, { settings: settings })
+}
+
+// The value a toggle sets next.
+function flipped(drive, key) {
+  return String(settingValue(drive, key) !== "true")
+}
+
+// The next preset of a choice setting, `delta` steps along.
+function stepped(drive, key, delta) {
+  return stepOption(SETTINGS[key].options, settingValue(drive, key), delta)
+}
+
 // Glyphs from the Material Design set in the Nerd Font Omarchy ships.
 var GLYPH = {
   idle: "\uDB80\uDD63",      // cloud outline  U+F0163

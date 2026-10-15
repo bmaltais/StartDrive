@@ -5,7 +5,7 @@ const path = require("node:path")
 
 // DriveModel.js is a QML library; load it as a plain script.
 const source = fs.readFileSync(path.join(__dirname, "..", "DriveModel.js"), "utf8").replace(/^\.pragma.*$/m, "")
-const M = new Function(source + "\nreturn { formatBytes, formatSpeed, usageText, usageFraction, driveStatus, summarize, headline, rowControls, primaryControl, detailItems, navStops, DETAIL_TABS, stepOption, tildePath, GLYPH, CACHE_SIZES }")()
+const M = new Function(source + "\nreturn { formatBytes, formatSpeed, usageText, usageFraction, driveStatus, summarize, headline, rowControls, primaryControl, detailItems, navStops, DETAIL_TABS, stepOption, tildePath, GLYPH, CACHE_SIZES, CACHE_AGES, SETTINGS, DETAIL_SETTING, settingValue, withSetting, flipped, stepped }")()
 
 const drive = (over) => Object.assign({ id: "google", configured: true, mounted: true, unit: "active" }, over)
 
@@ -84,3 +84,20 @@ test("stepOption stops at the ends and tolerates unknown values", () => {
 })
 
 test("tildePath", () => assert.strictEqual(M.tildePath("/home/bernard/Cloud/X"), "~/Cloud/X"))
+
+test("settings read, change and step through their one table", () => {
+  const d = drive({ settings: { cacheSize: "4G", cacheAge: "72h", readOnly: false, autostart: true } })
+  assert.strictEqual(M.settingValue(d, "cache-size"), "4G")
+  assert.strictEqual(M.settingValue(d, "read-only"), "false")
+  assert.strictEqual(M.flipped(d, "read-only"), "true")
+  assert.strictEqual(M.flipped(d, "autostart"), "false")
+  assert.strictEqual(M.stepped(d, "cache-age", 1), "168h")
+  const next = M.withSetting(d, "read-only", "true")
+  assert.strictEqual(next.settings.readOnly, true)
+  assert.strictEqual(d.settings.readOnly, false, "the original is untouched")
+  assert.strictEqual(M.withSetting(d, "cache-size", "10G").settings.cacheSize, "10G")
+})
+
+test("every detail item that edits a setting names a real one", () => {
+  for (const setting of Object.values(M.DETAIL_SETTING)) assert.ok(M.SETTINGS[setting], setting)
+})

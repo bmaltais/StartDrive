@@ -411,7 +411,7 @@ Column {
       hasCursor: card.host.isHot("detail", card.drive.id, "autostart")
       onHasCursorChanged: if (hasCursor) card.host.reveal(autoToggle)
       onHovered: function (on) { if (on) card.host.claim("detail", card.drive.id, "autostart") }
-      onClicked: card.service.set(card.drive.id, "autostart", String(!card.drive.settings.autostart))
+      onClicked: card.service.set(card.drive.id, "autostart", Model.flipped(card.drive, "autostart"))
     }
 
     Toggle {
@@ -426,7 +426,7 @@ Column {
       hasCursor: card.host.isHot("detail", card.drive.id, "readOnly")
       onHasCursorChanged: if (hasCursor) card.host.reveal(readOnlyToggle)
       onHovered: function (on) { if (on) card.host.claim("detail", card.drive.id, "readOnly") }
-      onClicked: card.service.set(card.drive.id, "read-only", String(!card.drive.settings.readOnly))
+      onClicked: card.service.set(card.drive.id, "read-only", Model.flipped(card.drive, "read-only"))
     }
 
     }

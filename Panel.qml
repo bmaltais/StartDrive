@@ -78,12 +78,9 @@ Panel {
       setControlIndex(stop.id, Math.max(0, Math.min(controls.length - 1, controlIndex(stop.id) + dx)))
     } else if (stop.key === "tabs") {
       detailTab = Model.stepOption(Model.DETAIL_TABS, detailTab, dx)
-    } else if (stop.key === "cacheSize") {
-      var d = service.drive(stop.id)
-      service.set(stop.id, "cache-size", Model.stepOption(Model.CACHE_SIZES, d.settings.cacheSize, dx))
-    } else if (stop.key === "cacheAge") {
-      var e = service.drive(stop.id)
-      service.set(stop.id, "cache-age", Model.stepOption(Model.CACHE_AGES, e.settings.cacheAge, dx))
+    } else if (Model.DETAIL_SETTING[stop.key] && Model.SETTINGS[Model.DETAIL_SETTING[stop.key]].options) {
+      var key = Model.DETAIL_SETTING[stop.key]
+      service.set(stop.id, key, Model.stepped(service.drive(stop.id), key, dx))
     }
   }
 
@@ -92,8 +89,8 @@ Panel {
     var d = service.drive(stop.id)
     if (!d) return
     if (stop.kind === "row") { perform(controlsOf(stop.id)[controlIndex(stop.id)], d); return }
-    if (stop.key === "autostart") service.set(d.id, "autostart", String(!d.settings.autostart))
-    else if (stop.key === "readOnly") service.set(d.id, "read-only", String(!d.settings.readOnly))
+    var setting = Model.DETAIL_SETTING[stop.key]
+    if (setting) service.set(d.id, setting, Model.flipped(d, setting))
     else if (stop.key === "refresh") service.refreshListing(d.id)
     else if (stop.key === "clearCache") service.clearCache(d.id)
   }
