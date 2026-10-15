@@ -5,14 +5,15 @@
 <h1 align="center">StartDrive</h1>
 
 <p align="center">
-  <b>Your cloud drives as plain folders, from a bar widget for Omarchy.</b><br>
-  Google Drive, OneDrive and Dropbox, plus any other rclone backend you add, mounted under <code>~/Cloud</code> with rclone,
-  with live upload activity, cache controls and per-drive settings.
+  <b>Your cloud drives as folders, for Omarchy.</b><br>
+  Google Drive, OneDrive, Dropbox and any other rclone backend, mounted under <code>~/Cloud</code>
+  with live upload activity, cache controls and per-drive settings, all a click away.
 </p>
 
 <p align="center">
   <a href="#install">Install</a> ·
   <a href="#tour">Tour</a> ·
+  <a href="#configure">Configure</a> ·
   <a href="#commands">Commands</a> ·
   <a href="#security">Security</a> ·
   <a href="#update-and-remove">Update and remove</a> ·
@@ -25,7 +26,7 @@
 omarchy plugin add https://github.com/bmaltais/StartDrive --enable
 ```
 
-It adds a cloud icon to the bar. The first time you connect a drive, `rclone` and `fuse3` are installed with `omarchy pkg add` (one sudo prompt, the only privileged step). Everything else (`secret-tool`, `gum`, `jq`, `curl`) ships with Omarchy.
+It adds a cloud icon to the bar, on the right by default. The first time you connect a drive, `rclone` and `fuse3` are installed with `omarchy pkg add` (one sudo prompt, the only privileged step). Everything else (`secret-tool`, `gum`, `jq`, `curl`) comes with Omarchy.
 
 ```
 ~/Cloud/GoogleDrive
@@ -43,26 +44,54 @@ It adds a cloud icon to the bar. The first time you connect a drive, `rclone` an
 - **A switch to mount.** A folder button opens the drive in your file manager, a cog opens its details, a bin forgets the account. Click anywhere else on the row for its main action.
 - **Sync status.** Uploads are written to a local cache first and sent in the background, so the panel tells you when they are still on their way. The bar icon turns into an upload cloud while files are moving and into an alert cloud if one fails to upload. "All synced" means it is safe to shut down.
 - **Everything at once.** With more than one drive connected, the header switch mounts or unmounts them all.
-- **Keyboard first.** `j`/`k` move, `h`/`l` move along a row or change a choice, `Enter` activates. `m` mounts or unmounts, `o` opens, `d` shows details, `f` forgets, `a` toggles all, `r` refreshes, Escape closes.
+- **Any other remote.** **Add remote…** runs rclone's questionnaire in a terminal for any other backend (SFTP, WebDAV, S3, B2 ...). A remote named with letters, digits, `-` or `_` then shows up as a drive.
 
-### Details and settings
+### Keyboard
 
-<img src="screenshots/details.png" alt="A drive's details with the Cache tab open: activity, cache limit and keep-files choices" width="400">
+`j`/`k` move, `h`/`l` move along a row or change a choice, and `Enter` activates. `m` mounts or unmounts, `o` opens, `d` shows details, `f` forgets, `a` toggles all, `r` refreshes, `n` adds a remote. Escape closes the panel.
 
-Settings sit in tabs, so only the group you want is open: **Cache**, **Behaviour** and **Maintenance**.
+### Details
 
-<img src="screenshots/behaviour.png" alt="The Behaviour tab: mount at login and read-only" width="400"> <img src="screenshots/maintenance.png" alt="The Maintenance tab: refresh listing and clear cache" width="400">
+<table>
+  <tr>
+    <th>Cache</th>
+    <th>Behaviour</th>
+    <th>Maintenance</th>
+  </tr>
+  <tr valign="top">
+    <td><img src="screenshots/details.png" alt="A drive's details with the Cache tab open: activity, cache limit and keep-files choices"></td>
+    <td><img src="screenshots/behaviour.png" alt="The Behaviour tab: mount at login and read-only"></td>
+    <td><img src="screenshots/maintenance.png" alt="The Maintenance tab: refresh listing and clear cache"></td>
+  </tr>
+</table>
 
-- **Activity.** The files being transferred right now, each with its progress and speed.
-- **Cache.** Choose how much disk the cache may use (1 to 50 GB) and how long unused files stay (6 hours to 30 days). Clear it to delete the plaintext copies rclone keeps. Clearing is refused while uploads are pending, because those files exist only in the cache.
-- **Behaviour.** Mount at login, and read-only to block writes and deletes through the folder.
-- **Maintenance.** Refresh the directory listing when something changed in the cloud, or clear the cache.
-
-Settings are stored per drive in `~/.config/startdrive/<remote>.env`. A change to a mounted drive is applied at once if nothing is uploading, and at the next mount otherwise.
+The cog opens a drive's details: the files being transferred right now, each with its progress and speed, and the settings in three tabs, so only the group you want is open.
 
 ### Colours
 
-The panel follows the current Omarchy theme live: colours, fonts and the bar's own widgets.
+Colours and fonts follow the current Omarchy theme live, in the panel and in the bar icon.
+
+## Configure
+
+Changes apply as you make them, from the details of each drive.
+
+- **Cache.** Choose how much disk the cache may use (1 to 50 GB) and how long unused files stay (6 hours to 30 days).
+- **Behaviour.** Mount at login, and read-only to block writes and deletes through the folder.
+- **Maintenance.** Refresh the directory listing when something changed in the cloud, or clear the cache to delete the plaintext copies rclone keeps. Clearing is refused while uploads are pending, because those files exist only in the cache.
+
+A change to a mounted drive is applied at once if nothing is uploading, and at the next mount otherwise.
+
+### Settings files
+
+Each drive's settings are saved in `~/.config/startdrive/<remote>.env`, as the rclone variables the mount reads, which you can also edit by hand:
+
+```sh
+RCLONE_VFS_CACHE_MAX_SIZE=10G
+RCLONE_VFS_CACHE_MAX_AGE=72h
+RCLONE_READ_ONLY=false
+```
+
+Only these shapes are accepted (a size in `M` or `G`, an age in hours, `true` or `false`); anything else is ignored and the default is used. Mount at login is the state of the drive's systemd unit.
 
 ## Commands
 
@@ -73,7 +102,6 @@ Run these with `omarchy-shell io.github.bmaltais.startdrive <command>`, for inst
 | `toggle`, `open`, `close` | Shows or hides the panel |
 | `state` | Prints the drives and their activity as JSON |
 | `refresh` | Re-reads the state |
-| `add` | Runs rclone's questionnaire to add any other backend (SFTP, WebDAV, S3, B2 ...); a remote named with letters, digits, `-` or `_` then shows up as a drive |
 | `mount ID`, `unmount ID` | Mounts or unmounts a drive (`google`, `onedrive`, `dropbox`, or `r-<name>` for a remote you added) |
 | `mountAll`, `unmountAll` | Does it for every connected drive |
 | `connect ID` | Starts the sign-in in a terminal |
