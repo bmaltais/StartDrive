@@ -40,7 +40,17 @@ Nothing else is installed, downloaded or built. There is no network access of it
 
 ## Google client id
 
-rclone's shared Google client id is being retired during 2026. To keep working long-term, create your own OAuth client (https://rclone.org/drive/#making-your-own-client-id) and run `rclone config update GoogleDrive client_id=… client_secret=…`.
+Leave `client_id` blank and rclone uses its own shared Google project, whose API quota is shared by every rclone user. When that quota runs out, Google answers `403 rateLimitExceeded`, rclone backs off and retries, and a single folder listing can take 30 seconds or more while it holds the directory lock, so `ls` on the mount appears frozen. rclone also plans to retire the shared id during 2026.
+
+The lasting fix is your own OAuth client (https://rclone.org/drive/#making-your-own-client-id). Then:
+
+```
+rclone config update GoogleDrive client_id=… client_secret=…
+rclone config reconnect GoogleDrive:
+systemctl --user restart startdrive@GoogleDrive
+```
+
+To confirm throttling, run `rclone lsf GoogleDrive: -vv 2>&1 | grep -i ratelimit`.
 
 ## Files it touches
 

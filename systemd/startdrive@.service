@@ -19,6 +19,11 @@ Environment=RCLONE_CONFIG=%h/.config/rclone/rclone.conf
 Environment=RCLONE_VFS_CACHE_MAX_SIZE=4G
 Environment=RCLONE_VFS_CACHE_MAX_AGE=72h
 Environment=RCLONE_READ_ONLY=false
+# While Google throttles the shared rclone client id, every API call backs off
+# and retries, and a directory listing holds the directory lock the whole time
+# so every ls queues behind it. Fewer retries make a throttled listing fail
+# (EIO, retried on the next ls) instead of hanging for minutes.
+Environment=RCLONE_LOW_LEVEL_RETRIES=3
 EnvironmentFile=-%h/.config/startdrive/%i.env
 # A private 0700 directory per mount for rclone's remote-control socket, which
 # the panel uses for transfer activity and cache controls. A unix socket in a
@@ -28,7 +33,7 @@ RuntimeDirectoryMode=0700
 ExecStartPre=/usr/bin/mkdir -p -m 0700 %h/Cloud/%i %h/.cache/rclone
 ExecStart=/usr/bin/rclone mount %i: %h/Cloud/%i \
   --vfs-cache-mode full \
-  --dir-cache-time 5m \
+  --dir-cache-time 1h \
   --poll-interval 15s \
   --umask 077 \
   --allow-other=false \
