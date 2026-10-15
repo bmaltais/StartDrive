@@ -11,18 +11,10 @@
 # In the sandbox it changes: the saved size and place of both windows (reset to the defaults), a mount, a
 # cache setting and the read-only flag of the demo drives, and the bar icon.
 
-TOUR_TITLE=StartDrive
 TOUR_OUT=screenshots/hero.avif
-TOUR_LAYER=omarchy-startdrive
 TOUR_STEPS=7
 
-# This plugin runs in the sandbox on fixture drives: nothing of the real config is copied in.
-TOUR_PLUGIN_ID=io.github.bmaltais.startdrive
-TOUR_SANDBOX_COPY=()
-TOUR_SANDBOX_LINK=(.local/share/icons)
-# The recorder proves the tour touched none of these (it fails the run if one changed). It lists them recursively, so never
-# name ~/Cloud or anything else a mount lives under: walking a live cloud mount is slow and spends the drive's API quota.
-TOUR_REAL_UNCHANGED=(.config/omarchy/shell.json .config/startdrive .config/systemd/user .config/rclone .local/share/applications/startdrive.desktop .local/bin/startdrive)
+# The plugin, its sandbox (fixture drives, nothing of the real config) and what a recording must not change are in devkit.conf.
 
 ID=io.github.bmaltais.startdrive
 # Worked out when used, so that (HOME being the sandbox) it is the sandbox's.

@@ -19,9 +19,9 @@
 | `systemd/startdrive@.service` | The mount unit |
 | `assets/` | The launcher and window icon |
 | `screenshots/`, `preview.png` | Images used by the README and the marketplace; retake them with `scripts/screenshots.sh`, then `scripts/preview.sh` |
-| `scripts/tour.sh`, `tour-banner.qml`, `nested/`, `tours/`, `hero.sh` | The tour recorder and this app's tour. `screenshots/hero.avif` (the animation at the top of the README) is retaken with `scripts/hero.sh --install` when a step of the tour changes. The recorder is app-agnostic. See [docs/recording-tours.md](docs/recording-tours.md) |
+| `scripts/tour.sh`, `tours/`, `hero.sh`, `devkit.conf` | The tour recorder (the shared devkit's, in `scripts/devkit`) run for this checkout, and this app's tours; `devkit.conf` is what the devkit needs to know about the app. `screenshots/hero.avif` (the animation at the top of the README) is retaken with `scripts/hero.sh --install` when a step of the tour changes. The recorder is app-agnostic. See [docs/recording-tours.md](docs/recording-tours.md) |
 | `scripts/check.sh`, `lint-sh.sh`, `lint-qml.py`, `.githooks/`, `.github/workflows/check.yml` | The checks, the pre-commit hook (`git config core.hooksPath .githooks` once per clone; it refuses commits on `main`) and the CI job |
-| `scripts/dev`, `dev-view.qml`, `reload`, `pointer.sh`, `sheet` | Testing tools: a nested test session, the real-shell reload, a pointer click, contact sheets. See [docs/testing.md](docs/testing.md) |
+| `scripts/dev`, `sheet`, `reload`, `pointer.sh` | Testing tools: a nested test session, the real-shell reload, a pointer click, contact sheets. See [docs/testing.md](docs/testing.md) |
 | `tests/cli.sh`, `tests/*.test.js` | Command-line behaviour tests (demo mode) and Node tests for the model, input checks, upload safety and the marketplace rules |
 | `docs/omarchy-plugins.md` | How Omarchy enables and loads this plugin, and what picks up each kind of change |
 | `docs/testing.md` | How a change is checked and tried, and what went wrong before |

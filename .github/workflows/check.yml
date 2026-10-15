@@ -17,5 +17,6 @@ jobs:
       # The QML and manifest checks in scripts/check.sh need Qt and Omarchy, which this runner does not have;
       # they run in the pre-commit hook. tests/manifest.test.js repeats the marketplace's rules for CI.
       - run: scripts/lint-sh.sh
+      - run: scripts/lint-rules.sh
       - run: tests/cli.sh
       - run: npm test

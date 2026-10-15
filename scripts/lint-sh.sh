@@ -6,7 +6,7 @@
 set -euo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
-files=(bin/startdrive lib/*.sh scripts/*.sh scripts/reload scripts/sheet scripts/dev scripts/pointer.sh tests/*.sh scripts/nested/*.sh scripts/tours/*.sh .githooks/pre-commit)
+files=(bin/startdrive lib/*.sh scripts/*.sh scripts/reload scripts/sheet scripts/dev scripts/pointer.sh tests/*.sh scripts/tours/*.sh scripts/devkit/bin/* scripts/devkit/lib/*.sh .githooks/pre-commit)
 for f in "${files[@]}"; do
   bash -n "$f"
 done
