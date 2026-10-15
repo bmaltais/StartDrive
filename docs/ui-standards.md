@@ -200,11 +200,11 @@ A change is done once it has been seen working in the test session: see [testing
 
 ## Shared UI code
 
-The controls above, `SettingsWindow`, the drag-and-resize behaviour and the tour recorder (`scripts/tour.sh`) are meant to be shared by every Start app, so each does not keep its own copy. That is not done yet; the proposal is a shared `StartUI` repository copied into each app (git subtree). Until it exists, StartAppImage is the reference implementation and StartBar's settings window is the reference design; StartDrive's copies are kept identical to StartAppImage's except for these additions, which belong upstream when the shared repo exists:
+The controls above, `SettingsWindow`, the drag-and-resize behaviour and the tour recorder (now the shared devkit, `scripts/devkit`) are meant to be shared by every Start app, so each does not keep its own copy. That is not done yet; the proposal is a shared `StartUI` repository copied into each app (a git submodule). Until it exists, StartAppImage is the reference implementation and StartBar's settings window is the reference design; StartDrive's copies are kept identical to StartAppImage's except for these additions, which belong upstream when the shared repo exists:
 
 - `SettingsWindow`: the `action` field type (a button on the right), `titleGlyph` (an icon-font glyph where an app has no icon file), `initialPage` (the page `reset()` opens on).
 - `Switch.qml`: the switch pulled out of `SettingsWindow` so a row can use it too.
-- `scripts/dev move`: park the pointer before a screenshot. `scripts/nested/session.sh`'s sandbox is demo mode instead of copies of app data.
+- `scripts/dev move`: park the pointer before a screenshot. the sandbox is demo mode instead of copies of app data (`devkit.conf`).
 
 ## Decision log
 
