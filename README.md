@@ -42,7 +42,7 @@ The first time it runs, a settings window offers the recommended set: an **app l
 
 ### The manager
 
-<img src="screenshots/manager.png" alt="The manager listing Google Drive uploading a file, OneDrive synced with its storage meter, Dropbox not connected and an SFTP remote not mounted" width="640">
+<img src="screenshots/manager-clip.avif" alt="The manager listing Google Drive uploading a file, OneDrive synced with its storage meter, Dropbox not connected, and an SFTP remote being mounted and unmounted with its switch" width="640">
 
 - **One row per drive.** A status dot and line: not connected, mounting, mounted, synced, uploading (with the speed) or failed. A mounted drive also shows a storage meter, and while files are on their way, the file, its progress and how many more are waiting.
 - **A switch to mount.** A folder button opens the drive in your file manager, a cog opens its settings, a bin forgets the account. Click anywhere else on the row for its main action: connect, open the folder, or mount.
@@ -66,7 +66,7 @@ The cog opens a drive's settings, in four pages: **Behaviour**, **Cache**, **Mai
 
 ### The app's settings
 
-<img src="screenshots/settings-window.png" alt="The settings window: app launcher entry and command line" width="640">
+<img src="screenshots/app-settings-clip.avif" alt="The app's settings window: the General, Bar and Window pages, the bar icon switched off and on, and a search for remember" width="640">
 
 The gear in the manager's header opens the app's own settings: the launcher entry, the command line, the bar icon, and whether the windows remember their size and position. Drag a window by its top strip and resize it from the bottom-right corner.
 

@@ -95,7 +95,7 @@ The tour runs in a sandbox, so what it changes is thrown away. Anything it must 
 
 ## Clips of one window
 
-A tour with `TOUR_CROP=WxH+X+Y` keeps only that box of the session's screen, so a short tour of one window can stand in for a still image. `scripts/tours/settings-clip.sh` is the example: the settings window cropped as `screenshots.sh` crops it (840x600 at 220,100), about 18 seconds, 48 KB as an AVIF.
+A tour with `TOUR_CROP=WxH+X+Y` keeps only that box of the session's screen, so a short tour of one window can stand in for a still image. The README's clips are `scripts/tours/manager-clip.sh`, `settings-clip.sh` and `app-settings-clip.sh`: each window cropped as `screenshots.sh` crops it (720x540 at 280,130 for the manager, 840x600 at 220,100 for the settings windows), 14 to 18 seconds, 36 to 52 KB as an AVIF. `scripts/clips.sh` records them all.
 
 - **No captions**, or one: the crop is small. A clip is meant to be read as a picture.
 - **Loop it.** Open the window in `tour_setup` (before filming) and end `tour_play` on the page the clip began on, so the loop has no jump.
