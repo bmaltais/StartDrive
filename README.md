@@ -37,7 +37,7 @@ It adds a cloud icon to the bar. The first time you connect a drive, `rclone` an
 
 ### The panel
 
-<img src="screenshots/panel.png" alt="The panel listing three drives, one of them uploading" width="400">
+<img src="screenshots/panel.png" alt="The panel listing Google Drive, OneDrive and Dropbox, with an Add remote button" width="400">
 
 - **One row per drive.** A status dot and line: not connected, mounting, mounted, synced, uploading (with the speed) or failed. A mounted drive also shows a storage meter.
 - **A switch to mount.** A folder button opens the drive in your file manager, a cog opens its details, a bin forgets the account. Click anywhere else on the row for its main action.
@@ -47,7 +47,11 @@ It adds a cloud icon to the bar. The first time you connect a drive, `rclone` an
 
 ### Details and settings
 
-<img src="screenshots/details.png" alt="A drive's details: activity, cache limit and age, mount at login, read-only, refresh and clear cache" width="400">
+<img src="screenshots/details.png" alt="A drive's details with the Cache tab open: activity, cache limit and keep-files choices" width="400">
+
+Settings sit in tabs, so only the group you want is open: **Cache**, **Behaviour** and **Maintenance**.
+
+<img src="screenshots/behaviour.png" alt="The Behaviour tab: mount at login and read-only" width="400"> <img src="screenshots/maintenance.png" alt="The Maintenance tab: refresh listing and clear cache" width="400">
 
 - **Activity.** The files being transferred right now, each with its progress and speed.
 - **Cache.** Choose how much disk the cache may use (1 to 50 GB) and how long unused files stay (6 hours to 30 days). Clear it to delete the plaintext copies rclone keeps. Clearing is refused while uploads are pending, because those files exist only in the cache.
