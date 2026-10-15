@@ -252,6 +252,21 @@ t_the_bar_icon_programs_run_after_omarchys_normalize() {
   eq "$(jq -c '.plugins | length' <<<"$out")" 1 "still enabled"
 }
 
+# --- scripts/reload ------------------------------------------------------------
+# On a clean working tree it once exited silently (a `&&` that returned 1 under set -e), which only showed once everything was committed.
+t_reload_check_reports_on_a_clean_git_tree() {
+  local repo=$SCRATCH/reload-repo
+  mkdir -p "$repo/scripts" "$HOME/.config/omarchy/plugins/io.github.bmaltais.startdrive"
+  cp "$ROOT/scripts/reload" "$repo/scripts/reload"
+  git -C "$repo" init -q -b main
+  git -C "$repo" -c user.email=t@t -c user.name=t add -A
+  git -C "$repo" -c user.email=t@t -c user.name=t commit -q -m init
+  OUT=$(bash "$repo/scripts/reload" --check 2>"$SCRATCH/err"); CODE=$?
+  has "$OUT" "reload check:" "it says something"
+  has "$OUT" "main@" "it names the branch and commit"
+  [[ $OUT != *"+local"* ]] || fail "a clean tree is not +local: $OUT"
+}
+
 # --- window memory -----------------------------------------------------------
 t_window_starts_at_zero_and_remembers_what_it_is_given() {
   cli window; ok; eq "$OUT" '{"w":0,"h":0,"x":0,"y":0,"setup":{"w":0,"h":0,"x":0,"y":0}}' "fresh"
