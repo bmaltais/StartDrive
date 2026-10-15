@@ -26,6 +26,7 @@ icons() {
 }
 
 step "shell scripts (bash -n, shellcheck)" scripts/lint-sh.sh
+step "project rules (detached launches, tour paths)" scripts/lint-rules.sh
 step "CLI behaviour (tests/cli.sh)" tests/cli.sh
 step "model, CLI input checks, marketplace rules (node --test)" node --test
 step "QML (qmllint, new warnings only)" scripts/lint-qml.py

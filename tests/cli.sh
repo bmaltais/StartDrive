@@ -282,6 +282,43 @@ t_window_rejects_bad_input() {
   cli window --bogus; refused "unknown option"
 }
 
+# --- project rules (scripts/lint-rules.sh) ---------------------------------------
+# rules DIR: run the rules against a tree; sets OUT ERR CODE.
+rules() {
+  OUT=$(LINT_RULES_ROOT=$1 bash "$ROOT/scripts/lint-rules.sh" 2>"$SCRATCH/err"); CODE=$?
+  ERR=$(<"$SCRATCH/err")
+}
+
+t_rules_pass_on_this_repo() {
+  rules "$ROOT"; ok; has "$OUT" "lint-rules: ok" "output"
+}
+
+t_rules_catch_a_detached_launch_that_keeps_the_pipe_open() {
+  local d=$SCRATCH/tree1; mkdir -p "$d/scripts"
+  printf '%s\n' '#!/usr/bin/env bash' 'setsid -f env X=1 bash -c "sleep 9" _ "$a"' >"$d/scripts/dev"
+  rules "$d"; [[ $CODE -ne 0 ]] || fail "expected a failure: $OUT"
+  has "$OUT" "scripts/dev: setsid -f without 2>&1" "message"
+}
+
+t_rules_accept_a_detached_launch_whose_redirect_is_on_a_continuation_line() {
+  local d=$SCRATCH/tree2; mkdir -p "$d/scripts/nested"
+  cat >"$d/scripts/nested/session.sh" <<'SH'
+#!/usr/bin/env bash
+setsid -f env X=1 \
+  some-command >"$log" 2>&1
+SH
+  rules "$d"; ok
+}
+
+t_rules_catch_a_tour_that_fingerprints_a_cloud_mount() {
+  local d=$SCRATCH/tree3; mkdir -p "$d/scripts/tours"
+  printf '%s\n' 'TOUR_REAL_UNCHANGED=(.config/startdrive Cloud)' >"$d/scripts/tours/bad.sh"
+  rules "$d"; [[ $CODE -ne 0 ]] || fail "expected a failure: $OUT"
+  has "$OUT" "names a cloud mount" "message"
+  printf '%s\n' 'TOUR_REAL_UNCHANGED=(.config/startdrive .local/bin/startdrive)' >"$d/scripts/tours/bad.sh"
+  rules "$d"; ok
+}
+
 # --- runner -------------------------------------------------------------------
 want=("$@")
 selected() {
