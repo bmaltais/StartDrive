@@ -6,6 +6,9 @@
 #   tests/cli.sh              all tests
 #   tests/cli.sh mount set    only tests whose name contains one of the words
 set -uo pipefail
+# Run by git's pre-commit hook, git's own variables name the repository being committed. A test that makes a repository of its own would
+# then add its files to that one's index, and the commit would hold nothing but a fixture (it did: a commit with one file, scripts/reload).
+unset GIT_INDEX_FILE GIT_DIR GIT_WORK_TREE GIT_PREFIX GIT_OBJECT_DIRECTORY GIT_COMMON_DIR
 
 ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 CLI="$ROOT/bin/startdrive"
@@ -309,6 +312,7 @@ t_rules_pass_on_this_repo() {
 }
 
 t_rules_catch_a_detached_launch_that_keeps_the_pipe_open() {
+  [[ -x $ROOT/scripts/devkit/bin/lint ]] || return 0   # the devkit's rules: nothing to test while the submodule is not checked out
   local d=$SCRATCH/tree1; mkdir -p "$d/scripts"
   printf '%s\n' '#!/usr/bin/env bash' 'setsid -f env X=1 bash -c "sleep 9" _ "$a"' >"$d/scripts/dev"
   rules "$d"; [[ $CODE -ne 0 ]] || fail "expected a failure: $OUT"
@@ -316,6 +320,7 @@ t_rules_catch_a_detached_launch_that_keeps_the_pipe_open() {
 }
 
 t_rules_accept_a_detached_launch_whose_redirect_is_on_a_continuation_line() {
+  [[ -x $ROOT/scripts/devkit/bin/lint ]] || return 0   # the devkit's rules: nothing to test while the submodule is not checked out
   local d=$SCRATCH/tree2; mkdir -p "$d/scripts/nested"
   cat >"$d/scripts/nested/session.sh" <<'SH'
 #!/usr/bin/env bash

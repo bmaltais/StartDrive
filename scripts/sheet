@@ -1,39 +1,6 @@
 #!/usr/bin/env bash
-# sheet: turn an animation (GIF or animated AVIF) into one contact sheet image, so a whole recording can be looked at at once.
-#
-#   scripts/sheet FILE [--every SECONDS] [--width PX] [--cols N] [--out FILE]
-#
-#   --every  seconds between frames (default 3.5)       --width  width of each frame in pixels (default 420)
-#   --cols   frames per row (default 4)                 --out    where the sheet goes (default $TMPDIR/sheet.png)
-#
-# An AVIF holds two video streams: the still cover image first and the animation second, so a plain ffmpeg or ffprobe reads one
-# frame. This reads the animation (`-f mov -map 0:v:1`).
-# Prints one line: sheet OUT frames N every Ss
-set -euo pipefail
-
-file="" every=3.5 width=420 cols=4 out=${TMPDIR:-/tmp}/sheet.png
-die() { echo "sheet: $*" >&2; exit 1; }
-while (($#)); do
-  case $1 in
-    --every) every=${2:?}; shift 2 ;;
-    --width) width=${2:?}; shift 2 ;;
-    --cols) cols=${2:?}; shift 2 ;;
-    --out) out=${2:?}; shift 2 ;;
-    -h | --help) sed -n '2,/^set -euo/p' "${BASH_SOURCE[0]}" | sed '$d; s/^# \{0,1\}//'; exit 0 ;;
-    -*) die "unknown option $1 (see --help)" ;;
-    *) file=$1; shift ;;
-  esac
-done
-[[ -n $file ]] || die "usage: scripts/sheet FILE [--every S] [--width PX] [--cols N] [--out FILE]"
-[[ -f $file ]] || die "no such file: $file"
-for tool in ffmpeg magick; do command -v "$tool" >/dev/null || die "$tool is needed"; done
-
-dir=$(mktemp -d)
-trap 'rm -rf "$dir"' EXIT
-args=(-i "$file")
-case ${file##*.} in avif) args=(-f mov -i "$file" -map 0:v:1) ;; esac
-ffmpeg -loglevel error -y "${args[@]}" -vf "fps=1/$every,scale=$width:-1" "$dir/f_%04d.png" || die "ffmpeg could not read $file"
-n=$(find "$dir" -name 'f_*.png' | wc -l)
-((n > 0)) || die "no frames came out of $file"
-magick montage "$dir"/f_*.png -tile "${cols}x" -geometry +3+3 -background '#111' "$out"
-echo "sheet $out frames $n every ${every}s"
+# The devkit's `sheet`, run for this checkout (scripts/devkit, a submodule; docs/testing.md).
+export DEVKIT_APP_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+kit=$DEVKIT_APP_ROOT/scripts/devkit/bin/sheet
+[[ -x $kit ]] || { echo "scripts/devkit is empty: git submodule update --init scripts/devkit" >&2; exit 1; }
+exec "$kit" "$@"

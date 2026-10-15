@@ -1,7 +1,7 @@
 {
   "name": "startdrive",
   "private": true,
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Checks for StartDrive: shellcheck, the command-line tests, Node tests for the pure JS and the marketplace rules, qmllint and the Omarchy manifest validator.",
   "scripts": {
     "test": "node --test",
