@@ -35,7 +35,7 @@ card "$shots/maintenance.png" "$work/maintenance.png"
 
 # The badge above the name: a pill sized to its text.
 magick -background none -fill '#e8dcff' -font "$font" -pointsize 21 \
-  label:"Works with any rclone backend" -trim +repage "$work/badge-text.png"
+  label:"Compatible with Omarchy 4.5 windowed mode" -trim +repage "$work/badge-text.png"
 bw=$(( $(magick identify -format %w "$work/badge-text.png") + 36 ))
 bh=$(( $(magick identify -format %h "$work/badge-text.png") + 18 ))
 magick -size "${bw}x${bh}" xc:none -fill 'rgba(255,255,255,0.13)' -draw "roundrectangle 0,0 $((bw - 1)),$((bh - 1)) $((bh / 2)),$((bh / 2))" \

@@ -20,6 +20,8 @@
   <a href="#contributing">Contributing</a>
 </p>
 
+> **Omarchy 4.5:** StartDrive is compatible with the windowed mode coming in Omarchy 4.5.
+
 ## Install
 
 ```sh
