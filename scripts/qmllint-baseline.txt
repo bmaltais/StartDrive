@@ -46,6 +46,8 @@ Service.qml	unqualified	anchors
 Service.qml	unqualified	cloud
 Service.qml	unqualified	index
 Service.qml	unqualified	parent
+Service.qml	unqualified	settingsLoader
+Service.qml	unqualified	setupLoader
 Service.qml	unresolved-type	Type anchors is used but it is not resolved
 SettingsPill.qml	missing-property	Member "accent" not found on type "QQuickColor"
 SettingsPill.qml	missing-property	Member "foreground" not found on type "QQuickColor"

@@ -25,6 +25,7 @@ SettingsWindow {
   initialPage: Model.settingsStartPage(view.drive)
 
   onVisibleChanged: if (visible) view.reset()
+  Component.onCompleted: if (visible) view.reset()
 
   onChanged: function (key, value) {
     var d = view.drive
