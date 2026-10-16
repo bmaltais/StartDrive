@@ -5,7 +5,6 @@
   "description": "Checks for StartDrive: shellcheck, the command-line tests, Node tests for the pure JS and the marketplace rules, qmllint and the Omarchy manifest validator.",
   "scripts": {
     "test": "node --test",
-    "lint:sh": "scripts/lint-sh.sh",
     "validate": "omarchy plugin validate .",
     "check": "scripts/check.sh"
   }
