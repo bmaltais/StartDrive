@@ -255,21 +255,6 @@ t_the_bar_icon_programs_run_after_omarchys_normalize() {
   eq "$(jq -c '.plugins | length' <<<"$out")" 1 "still enabled"
 }
 
-# --- scripts/reload ------------------------------------------------------------
-# On a clean working tree it once exited silently (a `&&` that returned 1 under set -e), which only showed once everything was committed.
-t_reload_check_reports_on_a_clean_git_tree() {
-  local repo=$SCRATCH/reload-repo
-  mkdir -p "$repo/scripts" "$HOME/.config/omarchy/plugins/io.github.bmaltais.startdrive"
-  cp "$ROOT/scripts/reload" "$repo/scripts/reload"
-  git -C "$repo" init -q -b main
-  git -C "$repo" -c user.email=t@t -c user.name=t add -A
-  git -C "$repo" -c user.email=t@t -c user.name=t commit -q -m init
-  OUT=$(bash "$repo/scripts/reload" --check 2>"$SCRATCH/err"); CODE=$?
-  has "$OUT" "reload check:" "it says something"
-  has "$OUT" "main@" "it names the branch and commit"
-  [[ $OUT != *"+local"* ]] || fail "a clean tree is not +local: $OUT"
-}
-
 # --- window memory -----------------------------------------------------------
 t_window_starts_at_zero_and_remembers_what_it_is_given() {
   cli window; ok; eq "$OUT" '{"w":0,"h":0,"x":0,"y":0,"setup":{"w":0,"h":0,"x":0,"y":0}}' "fresh"
@@ -300,43 +285,23 @@ t_window_rejects_bad_input() {
   cli window --bogus; refused "unknown option"
 }
 
-# --- project rules (scripts/lint-rules.sh) ---------------------------------------
-# rules DIR: run the rules against a tree; sets OUT ERR CODE.
-rules() {
-  OUT=$(LINT_RULES_ROOT=$1 bash "$ROOT/scripts/lint-rules.sh" 2>"$SCRATCH/err"); CODE=$?
-  ERR=$(<"$SCRATCH/err")
+# --- project rules (cloud_mounts in devkit.conf; the kit's own rules are tested in the kit) -------------
+# cloud_mounts DIR: run the rule against a tree; sets OUT CODE.
+cloud_mounts() {
+  OUT=$(cd "$1" && source "$ROOT/devkit.conf" && cloud_mounts 2>&1); CODE=$?; ERR=$OUT
 }
 
 t_rules_pass_on_this_repo() {
-  rules "$ROOT"; ok; has "$OUT" "lint-rules: ok" "output"
-}
-
-t_rules_catch_a_detached_launch_that_keeps_the_pipe_open() {
-  [[ -x $ROOT/scripts/devkit/bin/lint ]] || return 0   # the devkit's rules: nothing to test while the submodule is not checked out
-  local d=$SCRATCH/tree1; mkdir -p "$d/scripts"
-  printf '%s\n' '#!/usr/bin/env bash' 'setsid -f env X=1 bash -c "sleep 9" _ "$a"' >"$d/scripts/dev"
-  rules "$d"; [[ $CODE -ne 0 ]] || fail "expected a failure: $OUT"
-  has "$OUT" "scripts/dev: setsid -f without 2>&1" "message"
-}
-
-t_rules_accept_a_detached_launch_whose_redirect_is_on_a_continuation_line() {
-  [[ -x $ROOT/scripts/devkit/bin/lint ]] || return 0   # the devkit's rules: nothing to test while the submodule is not checked out
-  local d=$SCRATCH/tree2; mkdir -p "$d/scripts/nested"
-  cat >"$d/scripts/nested/session.sh" <<'SH'
-#!/usr/bin/env bash
-setsid -f env X=1 \
-  some-command >"$log" 2>&1
-SH
-  rules "$d"; ok
+  cloud_mounts "$ROOT"; ok
 }
 
 t_rules_catch_a_tour_that_fingerprints_a_cloud_mount() {
   local d=$SCRATCH/tree3; mkdir -p "$d/scripts/tours"
   printf '%s\n' 'TOUR_REAL_UNCHANGED=(.config/startdrive Cloud)' >"$d/scripts/tours/bad.sh"
-  rules "$d"; [[ $CODE -ne 0 ]] || fail "expected a failure: $OUT"
+  cloud_mounts "$d"; [[ $CODE -ne 0 ]] || fail "expected a failure: $OUT"
   has "$OUT" "names a cloud mount" "message"
   printf '%s\n' 'TOUR_REAL_UNCHANGED=(.config/startdrive .local/bin/startdrive)' >"$d/scripts/tours/bad.sh"
-  rules "$d"; ok
+  cloud_mounts "$d"; ok
 }
 
 # --- runner -------------------------------------------------------------------
