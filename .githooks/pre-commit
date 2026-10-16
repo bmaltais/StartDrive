@@ -1,16 +1,3 @@
 #!/usr/bin/env bash
 # Enable once per clone: git config core.hooksPath .githooks
-# Refuses a commit on main (work goes on a branch and lands through a pull request), then runs scripts/check.sh.
-# Quiet when everything passes; prints the whole run when something fails.
-#   Override for the rare commit that must go on main:  ALLOW_MAIN=1 git commit ...
-branch=$(git symbolic-ref --short -q HEAD || true)
-if [[ $branch == main && -z ${ALLOW_MAIN:-} ]]; then
-  echo "pre-commit: you are on main. Make a branch first: git checkout -b <topic>"
-  echo "            (ALLOW_MAIN=1 git commit ... overrides this)"
-  exit 1
-fi
-if ! output=$("$(git rev-parse --show-toplevel)/scripts/check.sh" 2>&1); then
-  echo "$output"
-  echo "pre-commit: scripts/check.sh failed"
-  exit 1
-fi
+exec "$(git rev-parse --show-toplevel)/scripts/devkit/bin/pre-commit"

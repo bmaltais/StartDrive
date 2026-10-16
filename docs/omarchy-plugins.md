@@ -12,7 +12,7 @@ A plugin is enabled when its id appears in `~/.config/omarchy/shell.json`, eithe
 |---|---|
 | QML or JS edited in the plugin folder | Only a full shell restart (`omarchy restart shell`). The shell logs "Local plugin changed, reloading", and a `keepLoaded` service keeps running the old code. `omarchy plugin disable` and `enable` do not load new QML either |
 | `manifest.json` edited (kinds, entry points) | `omarchy-shell shell rescanPlugins` first, then the restart |
-| A service (`kinds` has `service`, with an `entryPoints.service`) | Loaded once the plugin is enabled; `keepLoaded: true` makes it survive a hot reload. It answers `omarchy-shell <id> <function>` after it loads, a moment after the shell itself answers `omarchy-shell shell ping`, so wait for it (`scripts/reload` polls `state`) |
+| A service (`kinds` has `service`, with an `entryPoints.service`) | Loaded once the plugin is enabled; `keepLoaded: true` makes it survive a hot reload. It answers `omarchy-shell <id> <function>` after it loads, a moment after the shell itself answers `omarchy-shell shell ping`, so wait for it (`scripts/reload` polls `state`, `DEVKIT_RELOAD_READY` in `devkit.conf`) |
 
 ## The plugins folder is scanned
 

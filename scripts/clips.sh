@@ -1,6 +1,6 @@
 #!/bin/bash
 # Records the README's clips of single windows (scripts/tours/*-clip.sh) and installs them in screenshots/.
-# Each one is its own session, so this takes a few minutes. See docs/recording-tours.md ("Clips of one window").
+# Each one is its own session, so this takes a few minutes. See docs/recording-tours.md ("What is StartDrive's").
 #
 #   scripts/clips.sh [CLIP...]     CLIP is manager, settings or app-settings (default: all three)
 set -euo pipefail

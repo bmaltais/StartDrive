@@ -62,6 +62,7 @@ SettingsWindow {
     view.vals = { launcher: i.launcher, cli: i.cli.state === "ours", barIcon: i.barIcon, rsize: i.rememberSize, rpos: i.rememberPosition }
   }
   onVisibleChanged: if (visible) { view.reset(); view.confirmingReset = false; view.refreshVals() }
+  Component.onCompleted: if (visible) { view.reset(); view.confirmingReset = false; view.refreshVals() }
   Connections {
     target: view.svc
     // Not while changes are still being made: the read-back would undo a click.

@@ -505,7 +505,7 @@ Item {
       anchors.horizontalCenterOffset: win.sDragX
       anchors.verticalCenterOffset: win.sDragY
       width: win.sSizeW > 0 ? win.sSizeW : Style.space(760)
-      height: win.sSizeH > 0 ? win.sSizeH : Math.min(setupView.implicitHeight, (win.screen ? win.screen.height : 900) - Style.space(80))
+      height: win.sSizeH > 0 ? win.sSizeH : Math.min(root.setupOpen ? (setupLoader.item ? (setupLoader.item as Item).implicitHeight : 0) : (settingsLoader.item ? (settingsLoader.item as Item).implicitHeight : 0), (win.screen ? win.screen.height : 900) - Style.space(80))
       radius: root.radius
       color: Color.menu.background
       border.width: Style.normalBorderWidth
@@ -534,18 +534,22 @@ Item {
         onReleased: win.saveSetupWindow(false)
       }
 
-      SetupView {
-        id: setupView
+      // Built only while open: a closed view would still hold its text inputs, and Qt reads the
+      // clipboard for each of them on every clipboard change.
+      Loader {
+        id: setupLoader
+        property var owner: root
         anchors.fill: parent
-        svc: root
-        visible: root.setupOpen
+        active: root.setupOpen
+        sourceComponent: SetupView { svc: setupLoader.owner }
       }
 
-      SettingsView {
-        id: settingsView
+      Loader {
+        id: settingsLoader
+        property var owner: root
         anchors.fill: parent
-        svc: root
-        visible: root.driveSettingsOpen
+        active: root.driveSettingsOpen
+        sourceComponent: SettingsView { svc: settingsLoader.owner }
       }
 
       // Resize handle in the bottom-right corner, as on the manager.
