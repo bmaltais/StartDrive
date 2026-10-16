@@ -7,6 +7,6 @@ on:
 
 jobs:
   check:
-    uses: bmaltais/omarchy-plugin-devkit/.github/workflows/app-check.yml@v0.2.1
+    uses: bmaltais/omarchy-plugin-devkit/.github/workflows/app-check.yml@v0.2.2
     with:
       node: true

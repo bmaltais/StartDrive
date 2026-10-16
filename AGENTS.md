@@ -23,11 +23,11 @@ Single-context: one `GLOSSARY.md` and `docs/adr/` at the repo root. See `docs/ag
 
 ## UI standards
 
-`docs/ui-standards.md` says how the UI looks and behaves and why. Follow it for any visible change. When a change makes a design decision, or goes against what it says, update that file in the same change and add a line to its decision log. UI work is done once seen working in `scripts/dev`. The windows, settings window and controls are shared with the other Start apps (StartAppImage is the reference implementation, StartBar the reference design): keep them identical, and note any addition in "Shared UI code".
+The shared UI rules (windows, settings window, controls, words) are in `scripts/devkit/docs/ui-standards.md`; `docs/ui-standards.md` holds only where StartDrive differs, its windows and settings tables, and the decision log. Follow both for any visible change. When a change makes a design decision, or goes against what either says, update the file it concerns in the same change and add a line to `docs/ui-standards.md`'s decision log (a shared rule changes in the kit, in that repository, as below). UI work is done once seen working in `scripts/dev`. The windows, settings window and controls are shared with the other Start apps (StartAppImage is the reference implementation, StartBar the reference design): keep them identical, and note any addition in "Shared UI code".
 
 ## Recorder
 
-`docs/recording-tours.md` before changing `scripts/tours/` or `devkit.conf`. The session and recorder themselves are the shared devkit's (`scripts/devkit`, a git submodule of `bmaltais/omarchy-plugin-devkit`, so it is not in what users install or what the marketplace reviews; clone with `--recurse-submodules`, or `git submodule update --init`): fix a bug there, in that repository, release it, and move the pointer (`git -C scripts/devkit checkout vX.Y.Z`, then commit); do not edit the files here. `scripts/screenshots.sh` and `scripts/preview.sh` retake the README images.
+`docs/recording-tours.md` (this app's tours; the recorder's own guide is `scripts/devkit/docs/recording-tours.md`) before changing `scripts/tours/` or `devkit.conf`. The session and recorder themselves are the shared devkit's (`scripts/devkit`, a git submodule of `bmaltais/omarchy-plugin-devkit`, so it is not in what users install or what the marketplace reviews; clone with `--recurse-submodules`, or `git submodule update --init`): fix a bug there, in that repository, release it, and move the pointer (`git -C scripts/devkit checkout vX.Y.Z`, then commit); do not edit the files here. `scripts/screenshots.sh` and `scripts/preview.sh` retake the README images.
 
 ## Omarchy plugin loading
 

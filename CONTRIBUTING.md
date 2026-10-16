@@ -26,7 +26,7 @@
 | `tests/cli.sh`, `tests/*.test.js` | Command-line behaviour tests (demo mode) and Node tests for the model, input checks, upload safety and the marketplace rules |
 | `docs/omarchy-plugins.md` | How Omarchy enables and loads this plugin, and what picks up each kind of change |
 | `docs/testing.md` | How a change is checked and tried, and what went wrong before |
-| `docs/ui-standards.md` | How the UI looks and behaves, and why. Read it before changing the UI, and update it when a design decision changes |
+| `docs/ui-standards.md` | Where StartDrive's UI differs from the shared rules in `scripts/devkit/docs/ui-standards.md`, its windows and settings, and the decision log. Read both before changing the UI, and update this one when a design decision changes |
 | `docs/SETTINGS.md`, `docs/SECURITY.md` | Every setting, and everything the plugin runs, installs and trusts. Keep SECURITY true: any new dependency, command, file or privilege goes in it |
 
 The QML never touches the machine itself: it asks `bin/startdrive` and reads its JSON (`state`, `activity`, `about`, `integration`, `window`).

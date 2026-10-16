@@ -1,25 +1,23 @@
 # UI standards
 
-How StartDrive looks and behaves, and why. The goal is that it feels like the rest of the Start family (StartBar, StartAppImage) and like Omarchy itself, so a person who knows one knows them all. StartAppImage is the reference implementation of the shared parts (the window, the settings window, the controls, the recorder); this file says how StartDrive uses them and where it differs on purpose.
+How StartDrive looks and behaves. **The shared rules are in the devkit: [scripts/devkit/docs/ui-standards.md](../scripts/devkit/docs/ui-standards.md)** (principles, windows, moving and resizing, remembered state, settings windows, applying settings, controls, words, notifications). Read it first. This file holds only where StartDrive differs from it or adds to it: its windows, its settings tables, its vocabulary, and the [decision log](#decision-log). Where the two disagree, the kit's wording wins unless this file says it is a difference.
 
-**This file is the source of truth for the UI.** Read it before you change anything visible. If a change makes a design decision that is not covered here, or goes against something that is, update this file in the same change and add a line to the [decision log](#decision-log). A UI change without a matching update here is not finished.
+**Both files are the source of truth for the UI.** If a change makes a design decision that neither covers, or goes against one, update the file it concerns in the same change and add a line to the [decision log](#decision-log) here. A UI change without a matching update is not finished.
 
-Sizes are written the way the code writes them: `space(n)` is `Style.space(n)`, which follows the user's font and spacing scale. Never hard-code pixels, colours or fonts.
+## Differences from the shared rules
 
-## Principles
+- **Failed settings.** The kit says a failed change is shown under the setting where the window can, otherwise as a notification. StartDrive splits it by kind: **a drive's setting says why under itself** (a red note), while **an app setting sends a critical notification** ("Setting was not applied" and the reason). Either way the control flips back on the read-back.
+- **Accent.** Besides the one thing to do and the selected state, accent marks the state that matters here: mounted and moving.
+- **The bar icon is on by default** here and off in StartAppImage; see [The bar icon](#the-bar-icon).
+- **The manager has no search box** (see [The manager](#the-manager)); StartAppImage has one.
 
-1. **Follow the theme, always.** Colours, fonts, corner radius and spacing come from the shell (`Color`, `Style`, `Util.alpha`). Nothing is hard-coded, so the UI follows the Omarchy theme live. Muted text is the foreground at about 55% opacity, hairlines about 14%.
-2. **Same as the family where they overlap.** The windows, settings window and controls are StartAppImage's, which copied StartBar's settings window. When this file and StartAppImage's disagree on a shared part, ask which is right and fix the other one.
-3. **Changes happen when you make them.** No Apply buttons (see [Applying settings](#applying-settings)). A change that cannot be made says so, next to the setting, and goes back.
-4. **The window you came from stays.** A window opened from another one floats over it; closing it brings the first back.
-5. **Everything in the UI has a command-line equivalent.** The QML never edits files or runs `systemctl` or `rclone`; it asks `bin/startdrive`. A setting that exists in a window exists as a `set` or `setup` option.
-6. **Say what will happen.** Every setting has a one-line hint, written as what the setting does, in the present tense.
-7. **Quiet by default.** Rarely used or destructive actions are small buttons, never the loudest thing. Colour (accent) is for the state that matters (mounted and moving, selected) and for the one thing to do.
-8. **Never lose a file.** Anything that could drop an upload that has not finished says so first or is refused: clearing the cache waits for uploads, forgetting an account asks in a terminal and counts them.
+## Principle 8: never lose a file
+
+The principles are the kit's; StartDrive adds an eighth. Anything that could drop an upload that has not finished says so first or is refused: clearing the cache waits for uploads, forgetting an account asks in a terminal and counts them.
+
+The kit's fifth principle names this app's tools: the QML never edits files or runs `systemctl` or `rclone`; it asks `bin/startdrive`. A setting that exists in a window exists as a `set` or `setup` option.
 
 ## Windows
-
-Every window is a card on a full-screen layer-shell overlay with a dimmed scrim. The card has the menu background, a hairline border at 14% foreground, the theme radius and a soft shadow.
 
 | Card | Width | Height | Moves | Resizes | Closes with |
 |---|---|---|---|---|---|
@@ -27,22 +25,10 @@ Every window is a card on a full-screen layer-shell overlay with a dimmed scrim.
 | Settings window | 760 (or the user's) | 520 (or the user's), at most the screen minus 80 | yes | yes | Esc, ✕, click outside or on the dimmed manager |
 | A drive's settings window | the settings window's | the settings window's | yes (same place as the settings window) | yes (same size) | Esc, ✕, click outside or on the dimmed manager |
 
-- **Dismissing.** Esc closes only the topmost window. In a settings window's search box, Esc clears the text first. A click on the scrim closes the topmost window.
-- **Stacking.** The settings window and a drive's settings window float over the manager, which stays visible behind them under a 35% dark veil. Only one of them is open at a time. Closing one returns the keyboard to the manager.
-- **Opening.** The manager opens where the user last left it (see [Remembered state](#remembered-state)). Opening a settings window while the manager is closed (from the command line) opens the manager behind it.
-- **Close button.** A ✕ in the top-right corner of every card, 8 from the edges.
+- **Stacking.** The settings window and a drive's settings window float over the manager and only one of them is open at a time. Closing one returns the keyboard to the manager.
+- **Opening a settings window while the manager is closed** (from the command line) opens the manager behind it.
+- **Remembered state** is saved in `~/.config/startdrive/config` and read with `startdrive window`.
 - **The terminal flows.** Signing in, forgetting an account, adding a remote and making your own Google key need a person at a keyboard (a browser, a confirmation, rclone's questionnaire), so they run in Omarchy's floating terminal and the card closes to get out of the way.
-
-### Moving and resizing (manager and settings window)
-
-- **Move** by dragging the top strip of the card, 60 high, whatever is not a control. The pointer is an open hand over it and a closed hand while dragging. Controls in the strip (search box, buttons) keep their own behaviour.
-- **Resize** from the bottom-right corner: a 22 square handle with a small two-line grip and the diagonal resize pointer. The top-left corner stays put. Double-click it to go back to the default size and centre.
-- **Limits.** The manager is at least 480 by 300, the settings window 560 by 360, both at most the screen minus 40. At least a 60 strip of the card always stays on screen.
-- **Maths.** A card is centred plus an offset, so a resize shifts the centre by half the change.
-
-### Remembered state
-
-Size and position of each window are saved in `~/.config/startdrive/config` (`WIN_*` for the manager, `SETUP_*` for the settings windows) and restored on the next open, even after a shell restart. Two switches control it, under **Window**: *Remember size* and *Remember position*. Switching one off forgets the saved value and opens centred, at the default size. They are read with `startdrive window` and written when a drag or resize ends.
 
 ## The manager
 
@@ -88,31 +74,7 @@ Size and position of each window are saved in `~/.config/startdrive/config` (`WI
 
 ## Settings windows
 
-There are two, the app's and one per drive, and they are the same component: `SettingsWindow.qml` draws the header, page list, rows and footer; `SetupView.qml` (the app's) and `SettingsView.qml` (one drive's) only say what the pages and settings are. A new settings window is a new thin file around `SettingsWindow`, never a new layout. They share one size and position, so opening either puts the window in the same place.
-
-Modelled on StartBar's settings window.
-
-```
-┌──────────────────────────────────────────────────────────┐
-│                  ( 🔍 Find a setting )                  ✕ │  header, 60
-│ ☁ OneDrive    │ Cache                                     │
-│   SETTINGS    │                                           │
-│  Behaviour    │ Cache limit        [1 GB][4 GB][10 GB]…   │
-│ ▌Cache        │ The most local disk the cache may use.    │  rows
-│  Maintenance  │ ───────────────────────────────────────── │
-│  Account      │ Keep files           [6 h][1 d][3 d]…     │
-│ ───────────────────────────────────────────────────────── │
-│ Changes apply instantly · Esc to close                   ◢│  footer, 52
-└──────────────────────────────────────────────────────────┘
-```
-
-- **Header (60).** A centred search pill, "Find a setting", with the magnifier glyph. While there is text, the right side lists matching settings from every page under "Search results", each group headed by its page name. No match says "No setting matches “…”."
-- **Page list (190 wide, left).** The window name (a drive's cloud icon and name, or "StartDrive") in bold with a small-caps "SETTINGS" under it, the same title-over-small-caps pattern as the manager's count line. Then one 38 high row per page. The title block and the page heading beside it are 48 high. The current page has a 22% accent fill and a 3 wide accent mark on the left, and bold text. Hover is the shell's hover fill. A click clears any search.
-- **Heading.** The page name, body size + 8, bold, on the row of the window name.
-- **Body.** Scrolls when the page is taller than the window, with the [scroll bar](#controls) in a gutter that is always reserved, so the width never changes.
-- **Setting row.** The label (body size) with its hint under it (caption size, 55% opacity), the control on the right, a hairline at 50% under each row. A **note** can sit under the control: muted for information, accent for a done action, red for an error.
-- **Disabled setting.** Dimmed to 40%, not clickable, and the hint says why ("Mount the drive to refresh its listing.", "Wait for 3 files to finish uploading.").
-- **Footer (52).** A hairline above it. On the left one muted line: "Changes apply instantly · Esc to close". On the right the window's pills, 30 clear of the resize grip.
+There are two, the app's and one per drive. `SetupView.qml` (the app's) and `SettingsView.qml` (one drive's) are thin files around the shared `SettingsWindow.qml`, as the kit describes; they share one size and position, so opening either puts the window in the same place. The window name is a drive's cloud icon and name, or "StartDrive", over "SETTINGS". A disabled setting says why in its hint ("Mount the drive to refresh its listing.", "Wait for 3 files to finish uploading.").
 
 ### The app's settings
 
@@ -128,7 +90,7 @@ A new setting goes on the page it belongs to, or a new page if none fits. Add it
 
 ### A drive's settings
 
-Opened from the cog on a row (or `s`, or `omarchy-shell io.github.bmaltais.startdrive settings <drive>`). The window title is the drive's cloud and name. The pages are `DriveModel.settingsPages`, so their wording and when a button is off are tested.
+Opened from the cog on a row (or `s`, or `omarchy-shell io.github.bmaltais.startdrive settings <drive>`). The pages are `DriveModel.settingsPages`, so their wording and when a button is off are tested.
 
 | Page | Setting | Control | Applies with |
 |---|---|---|---|
@@ -148,63 +110,39 @@ Opened from the cog on a row (or `s`, or `omarchy-shell io.github.bmaltais.start
 
 ### Applying settings
 
-- **Instantly.** Each click runs `startdrive setup` (app) or `startdrive set` (drive) for that one setting. Clicks queue and run one at a time, in order, so a quick second click is never dropped.
-- **Read back.** When the queue is empty the window reads the real state back, so a switch always shows what the system has. A drive's setting shows its new value at once, and the next poll confirms it.
-- **Failure.** An app setting that fails is announced with a critical notification ("Setting was not applied" and the reason) and its control flips back on the read-back. A drive's setting says why under itself.
-- **Window stays open.** Applying never closes the window.
-- **Reset to defaults** (app settings). A soft pill. The first click turns it red and asks "Click again to reset everything" for 3 seconds; the second click applies the defaults: launcher entry, command line and bar icon on, size and position remembered. These values are the CLI's (`defaults` in `startdrive integration`), not written here or in the QML.
-- **First run.** The settings window opens once, a few seconds after the plugin first loads, showing what is on now. The footer has **Not now** and an accent-filled **Enable recommended**. After the first change or **Not now** it never opens by itself again.
+Each click runs `startdrive setup` (app) or `startdrive set` (drive) for that one setting; the rest is the kit's. A drive's setting shows its new value at once, and the next poll confirms it. For failure, see the [differences](#differences-from-the-shared-rules).
+
+**Reset to defaults** (app settings) applies launcher entry, command line and bar icon on, size and position remembered. These values are the CLI's (`defaults` in `startdrive integration`), not written here or in the QML.
 
 ## Controls
 
-All are inline components or small files in this repo and use only theme tokens. Where one is shared with StartAppImage it is the same file.
-
-| Control | Look | Used for |
-|---|---|---|
-| **Switch** (`Switch.qml`) | 42 × 24 pill; accent when on, 25% foreground when off; round knob in the menu background, 3 inset; the knob slides 100 ms, but not while the page is first shown; pulses while `busy` | on/off settings, and a drive's mount |
-| **Choice** | Row of segments 28 high, 2 apart; selected is accent-filled with menu-background text, others 8% foreground; caption size. With many or long options (`stacked`) the segments wrap across the full width under the label, 6 apart | one of a few or several options |
-| **Action** | A pill on the right of a row, 32 high, 8% foreground fill, hover fill, caption size | a button in a settings window |
-| **Field** (`Field.qml`) | Single-line text box, 34 high, 6% foreground fill, border brightens on focus. In a settings window it sits under its label at full width and commits on Enter or when it loses focus; Esc drops the edit | text input (not used by a drive's settings yet) |
-| **Pill** (`SettingsPill.qml`) | 32 high, 8% foreground fill, hover fill, caption size; `primary` is accent-filled and bold; `danger` is 50% red | footer actions |
-| **Button** | The shell's `Button`; bordered for secondary (Connect, Add remote…), plain for a header action, icon-only on a row with a tooltip | rows, header, footer |
-| **Scroll bar** (`ScrollTrack.qml`) | 6 wide, soft track at 8%, rounded thumb at 28% that brightens on hover and press; drag the thumb or click the track; shown only when the list overflows | long lists and pages |
-
-Rules of thumb: one accent-filled thing per screen; selected means accent; hover is the shell's hover fill; nothing animates longer than 160 ms (the status dot and a busy switch pulse, which tells you something is running).
+The kit's. StartDrive's uses: the switch is also a drive's mount switch; the button is bordered for secondary (Connect, Add remote…), plain for a header action, and icon-only on a row with a tooltip; the field is not used by a drive's settings yet.
 
 ## Words
 
-- **Case.** Sentence case for labels and hints. Page names are one word.
+StartDrive's own, on top of the kit's:
+
 - **Names.** The window is the **manager**; the others are the **settings window** and a drive's **settings**. A **drive** is a cloud account shown as a folder; **mounted** is when its folder is there. *Forget* an account (never "delete" or "remove": your files in the cloud are untouched). *Connect* signs in.
 - **Verbs.** *Connect*, *Mount*, *Unmount*, *Open folder*, *Refresh*, *Clear*, *Forget…*, *Add remote…*, *Reset to defaults*. A trailing ellipsis only when the action asks for more input (a terminal, a questionnaire).
-- **Search box.** "Find a setting" in the settings window.
-- **Hints.** One or two short sentences, saying what happens. No "please", no exclamation marks.
-- **Errors.** Say what happened and what to do. They appear next to what caused them, or as a notification when the window is gone.
-- **Footer hint.** "Esc to close" appears at the bottom of every card that closes with Esc.
 
 ## The bar icon
 
-Optional, **on by default** (see the decision log), switched in the settings window. It is the cloud glyph, at the end of the right section of the bar, and it is where sync status lives: an outline cloud when nothing is mounted, a cloud when drives are, an **upload cloud in accent** while files are on their way, and a **red alert cloud** when a mount failed or an upload could not be sent. "All synced" in the manager means it is safe to shut down; the icon is how you see it without opening anything. Left click opens or closes the manager (the same command as the launcher entry); right click looks at the drives again. It reads one word from `~/.cache/startdrive/status`, which the service rewrites whenever the state changes.
+**On by default** (see the decision log), switched in the settings window. It is the cloud glyph, at the end of the right section of the bar, and it is where sync status lives: an outline cloud when nothing is mounted, a cloud when drives are, an **upload cloud in accent** while files are on their way, and a **red alert cloud** when a mount failed or an upload could not be sent. "All synced" in the manager means it is safe to shut down; the icon is how you see it without opening anything. Left click opens or closes the manager (the same command as the launcher entry); right click looks at the drives again. It reads one word from `~/.cache/startdrive/status`, which the service rewrites whenever the state changes. StartAppImage has it off by default; here it is on because of the status above.
 
 ## Notifications
 
-- **A problem.** A system notification, once per problem and again if it returns: a drive that could not mount (critical), an upload that failed (critical), a shared Google key on a mounted drive (normal). Per drive, a **Notifications** switch turns them off.
-- **App setting failed.** A critical notification, because the settings window cannot show it in place.
+A problem is a system notification, once per problem and again if it returns: a drive that could not mount (critical), an upload that failed (critical), a shared Google key on a mounted drive (normal). Per drive, a **Notifications** switch turns them off. A failed app setting is a critical notification, because the settings window cannot show it in place.
 
 ## Verifying a UI change
 
-A change is done once it has been seen working in the test session: see [testing.md](testing.md) (`scripts/dev`; it runs on demo drives, so click freely). Retake the README screenshots with `scripts/screenshots.sh` and `scripts/preview.sh` when the look changes, and the tour when a step of it changes ([recording-tours.md](recording-tours.md)).
-
-## The README tour
-
-`screenshots/hero.avif` is recorded by an app-agnostic recorder. Guide, tour-file rules and the recorder's decision log: [recording-tours.md](recording-tours.md).
+Seen working in the test session ([testing.md](testing.md); it runs on demo drives, so click freely). Retake the README screenshots with `scripts/screenshots.sh` and `scripts/preview.sh` when the look changes, and the tour when a step of it changes ([recording-tours.md](recording-tours.md)).
 
 ## Shared UI code
 
-The controls above, `SettingsWindow`, the drag-and-resize behaviour and the tour recorder (now the shared devkit, `scripts/devkit`) are meant to be shared by every Start app, so each does not keep its own copy. That is not done yet; the proposal is a shared `StartUI` repository copied into each app (a git submodule). Until it exists, StartAppImage is the reference implementation and StartBar's settings window is the reference design; StartDrive's copies are kept identical to StartAppImage's except for these additions, which belong upstream when the shared repo exists:
+The shared UI code is described in the kit's [Shared UI code](../scripts/devkit/docs/ui-standards.md#shared-ui-code): StartAppImage is the reference implementation, StartBar's settings window the reference design. StartDrive's copies are kept identical to StartAppImage's except for these additions, which belong upstream when the shared repo exists:
 
 - `SettingsWindow`: the `action` field type (a button on the right), `titleGlyph` (an icon-font glyph where an app has no icon file), `initialPage` (the page `reset()` opens on).
 - `Switch.qml`: the switch pulled out of `SettingsWindow` so a row can use it too.
-- `scripts/dev move`: park the pointer before a screenshot. the sandbox is demo mode instead of copies of app data (`devkit.conf`).
 
 ## Decision log
 
@@ -212,6 +150,7 @@ Newest first. One line each: what was decided, and why.
 
 | Date | Decision | Why |
 |---|---|---|
+| 2026-10-15 | The shared parts of this file moved to the devkit's `ui-standards.md`; this file keeps only what is StartDrive's | Three apps carried three drifting copies of the same rules |
 | 2026-10-15 | The bar icon is on by default here, unlike StartAppImage | It shows whether files are still uploading, which is what decides if it is safe to shut down; and every existing user already has it on the bar |
 | 2026-10-15 | The panel under the bar icon became a manager window, with a settings window per drive and one for the app, built from the family's components | One look and one behaviour across the Start apps; the panel's inline tabs held settings that now have room, search and feedback |
 | 2026-10-15 | A drive's details became pages (Behaviour, Cache, Maintenance, Account) of its settings window; what is moving stays on the row | Settings belong in the settings window; what is happening belongs where you look at the drives |
