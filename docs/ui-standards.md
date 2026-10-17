@@ -142,7 +142,7 @@ Seen working in the test session ([testing.md](testing.md); it runs on demo driv
 The shared UI code is described in the kit's [Shared UI code](../scripts/devkit/docs/ui-standards.md#shared-ui-code): StartAppImage is the reference implementation, StartBar's settings window the reference design. StartDrive's copies are kept identical to StartAppImage's except for these additions, which belong upstream when the shared repo exists:
 
 - `SettingsWindow`: the `action` field type (a button on the right), `titleGlyph` (an icon-font glyph where an app has no icon file), `initialPage` (the page `reset()` opens on).
-- `SettingsWindow` search box and `Field`: `readOnly: !activeFocus` on the `TextInput` (marketplace review, see the decision log); belongs upstream so the other Start apps get it.
+- `EntryText.qml`: the text of `Field` and of the settings search box, a read-only `TextInput` with typing, Backspace and Delete handled in QML (no paste, no input methods), so it never reads the clipboard (see the decision log); belongs upstream so the other Start apps get it.
 - `Switch.qml`: the switch pulled out of `SettingsWindow` so a row can use it too.
 
 ## Decision log
@@ -151,7 +151,7 @@ Newest first. One line each: what was decided, and why.
 
 | Date | Decision | Why |
 |---|---|---|
-| 2026-10-17 | Text boxes (`Field`, the settings search box) are read-only until focused | Qt's `TextInput` re-reads the clipboard text on every clipboard change unless it is read-only; an idle box then never touches a foreign clipboard |
+| 2026-10-17 | Text boxes (`Field`, the settings search box) are built on `EntryText`: a read-only `TextInput` with the typing handled in QML, so no paste and no input methods | Qt's `TextInput` reads the clipboard text on every clipboard change while it is editable (a marketplace review objected, with no cap on the size); a box that is never editable never touches the clipboard |
 | 2026-10-15 | The shared parts of this file moved to the devkit's `ui-standards.md`; this file keeps only what is StartDrive's | Three apps carried three drifting copies of the same rules |
 | 2026-10-15 | The bar icon is on by default here, unlike StartAppImage | It shows whether files are still uploading, which is what decides if it is safe to shut down; and every existing user already has it on the bar |
 | 2026-10-15 | The panel under the bar icon became a manager window, with a settings window per drive and one for the app, built from the family's components | One look and one behaviour across the Start apps; the panel's inline tabs held settings that now have room, search and feedback |

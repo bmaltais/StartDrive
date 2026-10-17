@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "io.github.bmaltais.startdrive",
   "name": "StartDrive",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "author": "Bernard Maltais",
   "license": "MIT",
   "description": "Cloud drives as folders from Omarchy: Google Drive, OneDrive, Dropbox and any other rclone backend, with a manager window, live upload activity, an optional bar icon and per-drive settings.",

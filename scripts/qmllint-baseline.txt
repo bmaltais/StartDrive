@@ -19,9 +19,9 @@ DriveRow.qml	missing-property	Member "urgent" not found on type "QQuickColor"
 DriveRow.qml	unqualified	Style
 DriveRow.qml	unqualified	Util
 DriveService.qml	block-scope-var-declaration	var declaration in block scope is hoisted to function scope Replace it with const or let to silence the warning 
+EntryText.qml	missing-property	Member "muted" not found on type "QQuickColor"
 Field.qml	missing-property	Member "accent" not found on type "QQuickColor"
 Field.qml	missing-property	Member "foreground" not found on type "QQuickColor"
-Field.qml	missing-property	Member "muted" not found on type "QQuickColor"
 Field.qml	unqualified	Style
 Field.qml	unqualified	Util
 ManagerView.qml	block-scope-var-declaration	var declaration in block scope is hoisted to function scope Replace it with const or let to silence the warning 

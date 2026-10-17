@@ -85,7 +85,7 @@ Item {
       radius: height / 2
       color: Util.alpha(Color.foreground, 0.06)
       border.width: Style.normalBorderWidth
-      border.color: Util.alpha(Color.foreground, search.activeFocus ? 0.30 : 0.12)
+      border.color: Util.alpha(Color.foreground, search.focused ? 0.30 : 0.12)
 
       Text {
         id: glass
@@ -97,32 +97,21 @@ Item {
         font.family: Style.font.family
         font.pixelSize: Style.font.body
       }
-      // Read-only until focused: Qt's TextInput re-reads the clipboard text on every clipboard change unless it is read-only,
-      // so an idle box must not be editable.
-      TextInput {
+      EntryText {
         id: search
         anchors.fill: parent
         anchors.leftMargin: Style.spacing.xxxl + glass.width + Style.spacing.md
         anchors.rightMargin: Style.spacing.xxxl
-        verticalAlignment: TextInput.AlignVCenter
         color: Color.foreground
         selectionColor: Util.alpha(Color.accent, 0.4)
         font.family: Style.font.family
         font.pixelSize: Style.font.body
         maximumLength: 64
-        readOnly: !activeFocus
-        clip: true
+        placeholder: win.searchPlaceholder
         onTextChanged: if (win.query !== search.text) win.query = search.text
         // Escape clears a search first, then closes the window.
-        Keys.onEscapePressed: function (event) {
+        onEscapePressed: function (event) {
           if (search.text !== "") { search.text = ""; event.accepted = true } else event.accepted = false
-        }
-        Text {
-          visible: search.text === ""
-          anchors.verticalCenter: parent.verticalCenter
-          text: win.searchPlaceholder
-          color: Color.muted
-          font: search.font
         }
       }
     }

@@ -11,7 +11,7 @@
 | `SettingsWindow.qml` | The settings window component: header, page list, rows, footer. Both settings windows are built on it |
 | `SetupView.qml` | The app's settings: launcher entry, command line, bar icon, window memory |
 | `SettingsView.qml` | One drive's settings: behaviour, cache, maintenance, account |
-| `SettingsPill.qml`, `Switch.qml`, `Field.qml`, `ScrollTrack.qml` | The small controls |
+| `SettingsPill.qml`, `Switch.qml`, `Field.qml`, `EntryText.qml`, `ScrollTrack.qml` | The small controls |
 | `BarWidget.qml` | The optional Omarchy bar icon |
 | `DriveModel.js` | The rules (status text, totals, keys, the settings pages, notifications). No Quickshell imports, so Node tests it |
 | `bin/startdrive`, `lib/*.sh` | The command line: state, mounts, sign-in, cache, settings, integration. It is the only part that touches the machine |
