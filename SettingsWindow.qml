@@ -97,6 +97,8 @@ Item {
         font.family: Style.font.family
         font.pixelSize: Style.font.body
       }
+      // Read-only until focused: Qt's TextInput re-reads the clipboard text on every clipboard change unless it is read-only,
+      // so an idle box must not be editable.
       TextInput {
         id: search
         anchors.fill: parent
@@ -108,6 +110,7 @@ Item {
         font.family: Style.font.family
         font.pixelSize: Style.font.body
         maximumLength: 64
+        readOnly: !activeFocus
         clip: true
         onTextChanged: if (win.query !== search.text) win.query = search.text
         // Escape clears a search first, then closes the window.

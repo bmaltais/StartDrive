@@ -20,6 +20,8 @@ Rectangle {
   border.width: Style.normalBorderWidth
   border.color: Util.alpha(Color.foreground, input.activeFocus ? 0.30 : 0.12)
 
+  // Read-only until focused: Qt's TextInput re-reads the clipboard text on every clipboard change unless it is read-only,
+  // so an idle box must not be editable.
   TextInput {
     id: input
     anchors.fill: parent
@@ -31,6 +33,7 @@ Rectangle {
     font.family: Style.font.family
     font.pixelSize: Style.font.bodySmall
     clip: true
+    readOnly: !activeFocus
     onAccepted: field.accepted()
     Keys.onEscapePressed: function (event) { field.escaped(); event.accepted = false }
 
